@@ -1,0 +1,116 @@
+1	PreCG.L	Precental gyrus	-39	-6	51
+2	PreCG.R	Precental gyrus	41	-8	52
+3	SFGdor.L	Superior frontal gyrus, dorsolateral	-18	35	42
+4	SFGdor.R	Superior frontal gyrus, dorsolateral	22	31	44
+5	ORBsup.L	Superior frontal gyrus, orbital part	-17	47	-13
+6	ORBsup.R	Superior frontal gyrus, orbital part	18	48	-14
+7	MFG.L	Middle frontal gyrus	-33	33	35
+8	MFG.R	Middle frontal gyrus	38	33	34
+9	ORBmid.L	Middle frontal gyrus, orbital part	-31	50	-10
+10	ORBmid.R	Middle frontal gyrus, orbital part	33	53	-11
+11	IFGoperc.L	Inferior frontal gyrus, opercular part	-48	13	19
+12	IFGoperc.R	Inferior frontal gyrus, opercular part	50	15	21
+13	IFGtriang.L	Inferior frontal gyrus, triangular part	-46	30	14
+14	IFGtriang.R	Inferior frontal gyrus, triangular part	50	30	14
+15	ORBinf.L	Inferior frontal gyrus, orbital part	-36	31	-12
+16	ORBinf.R	Inferior frontal gyrus, orbital part	41	32	-12
+17	ROL.L	Rolandic operculum	-47	-8	14
+18	ROL.R	Rolandic operculum	53	-6	15
+19	SMA.L	Supplementary motor area	-5	5	61
+20	SMA.R	Supplementary motor area	9	0	62
+21	OLF.L	Olfactory cortex	-8	15	-11
+22	OLF.R	Olfactory cortex	10	16	-11
+23	SFGmed.L	Superior frontal gyrus, medial	-5	49	31
+24	SFGmed.R	Superior frontal gyrus, medial	9	51	30
+25	ORBsupmed.L	Superior frontal gyrus, medial orbital	-5	54	-7
+26	ORBsupmed.R	Superior frontal gyrus, medial orbital	8	52	-7
+27	REC.L	Gyrus rectus	-5	37	-18
+28	REC.R	Gyrus rectus	8	36	-18
+29	INS.L	Insula	-35	7	3
+30	INS.R	Insula	39	6	2
+31	ACG.L	Anterior cingulate and paracingulate gyri	-4	35	14
+32	ACG.R	Anterior cingulate and paracingulate gyri	8	37	16
+33	DCG.L	Median cingulate and paracingulate gyri	-5	-15	42
+34	DCG.R	Median cingulate and paracingulate gyri	8	-9	40
+35	PCG.L	Posterior cingulate gyrus	-5	-43	25
+36	PCG.R	Posterior cingulate gyrus	7	-42	22
+37	HIP.L	Hippocampus	-25	-21	-10
+38	HIP.R	Hippocampus	29	-20	-10
+39	PHG.L	Parahippocampal gyrus	-21	-16	-21
+40	PHG.R	Parahippocampal gyrus	25	-15	-20
+41	AMYG.L	Amygdala	-23	-1	-17
+42	AMYG.R	Amygdala	27	1	-18
+43	CAL.L	Calcarine fissure and surrounding cortex	-7	-79	6
+44	CAL.R	Calcarine fissure and surrounding cortex	16	-73	9
+45	CUN.L	Cuneus	-6	-80	27
+46	CUN.R	Cuneus	14	-79	28
+47	LING.L	Lingual gyrus	-15	-68	-5
+48	LING.R	Lingual gyrus	16	-67	-4
+49	SOG.L	Superior occipital gyrus	-17	-84	28
+50	SOG.R	Superior occipital gyrus	24	-81	31
+51	MOG.L	Middle occipital gyrus	-32	-81	16
+52	MOG.R	Middle occipital gyrus	37	-80	19
+53	IOG.L	Inferior occipital gyrus	-36	-78	-8
+54	IOG.R	Inferior occipital gyrus	38	-82	-8
+55	FFG.L	Fusiform gyrus	-31	-40	-20
+56	FFG.R	Fusiform gyrus	34	-39	-20
+57	PoCG.L	Postcentral gyrus	-42	-23	49
+58	PoCG.R	Postcentral gyrus	41	-25	53
+59	SPG.L	Superior parietal gyrus	-23	-60	59
+60	SPG.R	Superior parietal gyrus	26	-59	62
+61	IPL.L	Inferior parietal, but supramarginal and angular gyri	-43	-46	47
+62	IPL.R	Inferior parietal, but supramarginal and angular gyri	46	-46	50
+63	SMG.L	Supramarginal gyrus	-56	-34	30
+64	SMG.R	Supramarginal gyrus	58	-32	34
+65	ANG.L	Angular gyrus	-44	-61	36
+66	ANG.R	Angular gyrus	46	-60	39
+67	PCUN.L	Precuneus	-7	-56	48
+68	PCUN.R	Precuneus	10	-56	44
+69	PCL.L	Paracentral lobule	-8	-25	70
+70	PCL.R	Paracentral lobule	7	-32	68
+71	CAU.L	Caudate nucleus	-11	11	9
+72	CAU.R	Caudate nucleus	15	12	9
+73	PUT.L	Lenticular nucleus, putamen	-24	4	2
+74	PUT.R	Lenticular nucleus, putamen	28	5	2
+75	PAL.L	Lenticular nucleus, pallidum	-18	0	0
+76	PAL.R	Lenticular nucleus, pallidum	21	0	0
+77	THA.L	Thalamus	-11	-18	8
+78	THA.R	Thalamus	13	-18	8
+79	HES.L	Heschl gyrus	-42	-19	10
+80	HES.R	Heschl gyrus	46	-17	10
+81	STG.L	Superior temporal gyrus	-53	-21	7
+82	STG.R	Superior temporal gyrus	58	-22	7
+83	TPOsup.L	Temporal pole: superior temporal gyrus	-40	15	-20
+84	TPOsup.R	Temporal pole: superior temporal gyrus	48	15	-17
+85	MTG.L	Middle temporal gyrus	-56	-34	-2
+86	MTG.R	Middle temporal gyrus	57	-37	-1
+87	TPOmid.L	Temporal pole: middle temporal gyrus	-36	15	-34
+88	TPOmid.R	Temporal pole: middle temporal gyrus	44	15	-32
+89	ITG.L	Inferior temporal gyrus	-50	-28	-23
+90	ITG.R	Inferior temporal gyrus	54	-31	-22
+91	Crbl_Crus1_L	Cerebelum_Crus1_L 	-37	-76	-24
+92	Crbl_Crus2_R	Cerebelum_Crus1_R 	37	-76	-24
+93	Crbl_Crus2_L	Cerebelum_Crus2_L 	-18	-87	-32
+94	Crbl_Crus2_R	Cerebelum_Crus2_R 	18	-87	-32
+95	Crbl_3_L	Cerebelum_3_L	-15	-29	-22
+96	Crbl_3_R	Cerebelum_3_R	15	-29	-22
+97	Crbl_4_5_L	Cerebelum_4_5_L	-28	-31	-29
+98	Crbl_4_5_R	Cerebelum_4_5_R	28	-31	-29
+99	Crbl_6_L	Cerebelum_6_L	-26	-60	-24
+100	Crbl_6_R	Cerebelum_6_R	26	-60	-24
+101	Crbl_7b_L	Cerebelum_7b_L	-44	-65	-54
+102	Crbl_7b_R	Cerebelum_7b_R	44	-65	-54
+103	Crbl_8_L	Cerebelum_8_L	-15	-65	-44
+104	Crbl_8_R	Cerebelum_8_R	15	-65	-44
+105	Crbl_9_L	Cerebelum_9_L	-12	-48	-54
+106	Crbl_9_R	Cerebelum_9_R	12	-48	-54
+107	Crbl_10_L	Cerebelum_10_L	-25	-36	-44
+108	Crbl_10_R	Cerebelum_10_R	25	-36	-44
+109	Verm_1_2	Vermis_1_2	0	-42	-22
+110	Verm_3	Vermis_3	0	-51	-7
+111	Verm_4_5	Vermis_4_5	0	-56	-6
+112	Verm_6	Vermis_6	0	-70	-15
+113	Verm_7	Vermis_7	0	-71	-27
+114	Verm_8	Vermis_8	0	-64	-43
+115	Verm_9	Vermis_9	0	-58	-38
+116	Verm_10	Vermis_10	0	-42	-38

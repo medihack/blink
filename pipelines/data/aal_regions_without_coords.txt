@@ -1,0 +1,116 @@
+1	PreCG.L	Precental gyrus
+2	PreCG.R	Precental gyrus
+3	SFGdor.L	Superior frontal gyrus, dorsolateral
+4	SFGdor.R	Superior frontal gyrus, dorsolateral
+5	ORBsup.L	Superior frontal gyrus, orbital part
+6	ORBsup.R	Superior frontal gyrus, orbital part
+7	MFG.L	Middle frontal gyrus
+8	MFG.R	Middle frontal gyrus
+9	ORBmid.L	Middle frontal gyrus, orbital part
+10	ORBmid.R	Middle frontal gyrus, orbital part
+11	IFGoperc.L	Inferior frontal gyrus, opercular part
+12	IFGoperc.R	Inferior frontal gyrus, opercular part
+13	IFGtriang.L	Inferior frontal gyrus, triangular part
+14	IFGtriang.R	Inferior frontal gyrus, triangular part
+15	ORBinf.L	Inferior frontal gyrus, orbital part
+16	ORBinf.R	Inferior frontal gyrus, orbital part
+17	ROL.L	Rolandic operculum
+18	ROL.R	Rolandic operculum
+19	SMA.L	Supplementary motor area
+20	SMA.R	Supplementary motor area
+21	OLF.L	Olfactory cortex
+22	OLF.R	Olfactory cortex
+23	SFGmed.L	Superior frontal gyrus, medial
+24	SFGmed.R	Superior frontal gyrus, medial
+25	ORBsupmed.L	Superior frontal gyrus, medial orbital
+26	ORBsupmed.R	Superior frontal gyrus, medial orbital
+27	REC.L	Gyrus rectus
+28	REC.R	Gyrus rectus
+29	INS.L	Insula
+30	INS.R	Insula
+31	ACG.L	Anterior cingulate and paracingulate gyri
+32	ACG.R	Anterior cingulate and paracingulate gyri
+33	DCG.L	Median cingulate and paracingulate gyri
+34	DCG.R	Median cingulate and paracingulate gyri
+35	PCG.L	Posterior cingulate gyrus
+36	PCG.R	Posterior cingulate gyrus
+37	HIP.L	Hippocampus
+38	HIP.R	Hippocampus
+39	PHG.L	Parahippocampal gyrus
+40	PHG.R	Parahippocampal gyrus
+41	AMYG.L	Amygdala
+42	AMYG.R	Amygdala
+43	CAL.L	Calcarine fissure and surrounding cortex
+44	CAL.R	Calcarine fissure and surrounding cortex
+45	CUN.L	Cuneus
+46	CUN.R	Cuneus
+47	LING.L	Lingual gyrus
+48	LING.R	Lingual gyrus
+49	SOG.L	Superior occipital gyrus
+50	SOG.R	Superior occipital gyrus
+51	MOG.L	Middle occipital gyrus
+52	MOG.R	Middle occipital gyrus
+53	IOG.L	Inferior occipital gyrus
+54	IOG.R	Inferior occipital gyrus
+55	FFG.L	Fusiform gyrus
+56	FFG.R	Fusiform gyrus
+57	PoCG.L	Postcentral gyrus
+58	PoCG.R	Postcentral gyrus
+59	SPG.L	Superior parietal gyrus
+60	SPG.R	Superior parietal gyrus
+61	IPL.L	Inferior parietal, but supramarginal and angular gyri
+62	IPL.R	Inferior parietal, but supramarginal and angular gyri
+63	SMG.L	Supramarginal gyrus
+64	SMG.R	Supramarginal gyrus
+65	ANG.L	Angular gyrus
+66	ANG.R	Angular gyrus
+67	PCUN.L	Precuneus
+68	PCUN.R	Precuneus
+69	PCL.L	Paracentral lobule
+70	PCL.R	Paracentral lobule
+71	CAU.L	Caudate nucleus
+72	CAU.R	Caudate nucleus
+73	PUT.L	Lenticular nucleus, putamen
+74	PUT.R	Lenticular nucleus, putamen
+75	PAL.L	Lenticular nucleus, pallidum
+76	PAL.R	Lenticular nucleus, pallidum
+77	THA.L	Thalamus
+78	THA.R	Thalamus
+79	HES.L	Heschl gyrus
+80	HES.R	Heschl gyrus
+81	STG.L	Superior temporal gyrus
+82	STG.R	Superior temporal gyrus
+83	TPOsup.L	Temporal pole: superior temporal gyrus
+84	TPOsup.R	Temporal pole: superior temporal gyrus
+85	MTG.L	Middle temporal gyrus
+86	MTG.R	Middle temporal gyrus
+87	TPOmid.L	Temporal pole: middle temporal gyrus
+88	TPOmid.R	Temporal pole: middle temporal gyrus
+89	ITG.L	Inferior temporal gyrus
+90	ITG.R	Inferior temporal gyrus
+91	Crbl_Crus1_L	Cerebelum_Crus1_L 
+92	Crbl_Crus2_R	Cerebelum_Crus1_R 
+93	Crbl_Crus2_L	Cerebelum_Crus2_L 
+94	Crbl_Crus2_R	Cerebelum_Crus2_R 
+95	Crbl_3_L	Cerebelum_3_L
+96	Crbl_3_R	Cerebelum_3_R
+97	Crbl_4_5_L	Cerebelum_4_5_L
+98	Crbl_4_5_R	Cerebelum_4_5_R
+99	Crbl_6_L	Cerebelum_6_L
+100	Crbl_6_R	Cerebelum_6_R
+101	Crbl_7b_L	Cerebelum_7b_L
+102	Crbl_7b_R	Cerebelum_7b_R
+103	Crbl_8_L	Cerebelum_8_L
+104	Crbl_8_R	Cerebelum_8_R
+105	Crbl_9_L	Cerebelum_9_L
+106	Crbl_9_R	Cerebelum_9_R
+107	Crbl_10_L	Cerebelum_10_L
+108	Crbl_10_R	Cerebelum_10_R
+109	Verm_1_2	Vermis_1_2
+110	Verm_3	Vermis_3
+111	Verm_4_5	Vermis_4_5
+112	Verm_6	Vermis_6
+113	Verm_7	Vermis_7
+114	Verm_8	Vermis_8
+115	Verm_9	Vermis_9
+116	Verm_10	Vermis_10
