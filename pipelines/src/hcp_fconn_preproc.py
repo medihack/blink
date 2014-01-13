@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
 import os
-from nipype.pipeline.engine import Node, Workflow
+from nipype.pipeline.engine import Node, MapNode, Workflow
 from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
 from nipype.interfaces.fsl.utils import Smooth, ImageMeants
 from nipype.interfaces.fsl.maths import TemporalFilter
-from nipype.interfaces.fsl.preprocess import FAST
+from nipype.interfaces.fsl.preprocess import FAST, ApplyXfm
+from nipype.interfaces.fsl.model import GLM
 from nipype.interfaces.utility import Function
-from nipype.interfaces.fsl import Merge
 from nipype.algorithms.misc import Gunzip
-from blink_interface import FunctionalConnectivity
+from blink_interface import FunctionalConnectivity, RegionsMapper
 
 subjects = ["100408"]
 
@@ -32,79 +32,131 @@ templates = dict(
 datasource = Node(SelectFiles(templates), name="datasource")
 datasource.inputs.base_directory = basedir
 
-segment = Node(FAST(), name="segmentation")
+segment = Node(FAST(), name="segment")
 segment.inputs.no_pve = True
 segment.inputs.segments = True
 
-def get_csf_file(tissue_class_files):
-    print tissue_class_files
-    return tissue_class_files[0]
+sampleseg = MapNode(ApplyXfm(apply_xfm=True), name="sampleseg", iterfield=["in_file"])
+sampleseg.inputs.in_matrix_file = os.path.join(basedir, "data", "ident.mat")
+sampleseg.inputs.interp = "nearestneighbour"
 
-meants = Node(ImageMeants(), name="meants")
+def del_gm_file(tissue_class_files):
+    del tissue_class_files[1]
+    return tissue_class_files
 
-def concat(means):
-    pass
+meants = MapNode(ImageMeants(), name="meants", iterfield=["mask"])
+
+def concat(in_files):
+    import os
+    from itertools import izip_longest
+
+    assert len(in_files) == 2
+
+    concatted_meants = []
+    with open(in_files[0]) as csf_meants_file, open(in_files[1]) as wm_meants_file:
+        for line in izip_longest(csf_meants_file, wm_meants_file):
+            concatted_meants.append(line[0].strip() + " " + line[1].strip())
+
+    out_fname = os.path.join(os.getcwd(), "csf_wm_meants.txt")
+    with open(out_fname, "w") as out_file:
+        for line in concatted_meants:
+            out_file.write(line + "\n")
+
+    return out_fname
+
+concat = Node(Function(input_names=["in_files"],
+                       output_names="out_file",
+                       function=concat),
+              name="concat")
+
+glm = Node(GLM(), name="glm")
+glm.inputs.out_res_name = "func_regressed.nii.gz"
+
+tfilter = Node(TemporalFilter(), name="tfilter")
+tfilter.inputs.highpass_sigma = 1389
+
+smooth = Node(Smooth(), name='smoothing')
+smooth.inputs.fwhm = 5.0
+
+unzip = Node(Gunzip(), name="unzip")
+
+conn = Node(FunctionalConnectivity(), name="conn")
+conn.inputs.atlas = os.path.join(basedir, "data", "aal2mni_2mm.nii.gz")
+
+mapper = Node(RegionsMapper(), name="mapper")
+mapper.inputs.definitions = os.path.join(basedir, "data", "aal_regions_with_coords.txt")
+mapper.inputs.atlas = os.path.join(basedir, "data", "aal2mni_2mm.nii.gz")
+
+def export_conn(normalized_matrix, regions):
+    import os
+    import json
+
+    assert len(normalized_matrix.shape) == 2
+    nm_fname = os.path.join(os.getcwd(), "normalized_matrix.json")
+    with open(nm_fname, "w") as f:
+        json.dump(normalized_matrix.tolist(), f)
+
+    assert len(regions.shape) == 1
+    r_fname = os.path.join(os.getcwd(), "regions.json")
+    with open(r_fname, "w") as f:
+        json.dump(regions.tolist(), f)
+
+    return (nm_fname, r_fname)
+
+exportconn = Node(Function(input_names=["normalized_matrix", "regions"],
+                       output_names=["normalized_matrix", "regions"],
+                       function=export_conn),
+              name="export_conn")
+
+datasink = Node(DataSink(), name="sinker")
+datasink.inputs.base_directory = basedir + "/outputs"
+datasink.inputs.parameterization = False
+
+#def debug(val):
+    #print val
+    #return None
+
+#debug = Node(Function(input_names=["val"],
+                      #output_names="output",
+                      #function=debug),
+             #name="debug")
 
 metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
+
+                  # regress out csf and wm
                   (datasource, segment, [("struct", "in_files")]),
+                  (segment, sampleseg, [(("tissue_class_files", del_gm_file), "in_file")]),
+                  (datasource, sampleseg, [("func", "reference")]),
+                  (sampleseg, meants, [("out_file", "mask")]),
                   (datasource, meants, [("func", "in_file")]),
-                  (segment, meants, [(("tissue_class_files", get_csf_file), "mask")]),
+                  (meants, concat, [("out_file", "in_files")]),
+                  (concat, glm, [("out_file", "design")]),
+                  (datasource, glm, [("func", "in_file")]),
+
+                  # bandpass filter
+                  (glm, tfilter, [("out_res", "in_file")]),
+
+                  # smooth
+                  (tfilter, smooth, [("out_file", "in_file")]),
+
+                  # unzip nifti file
+                  (smooth, unzip, [("smoothed_file", "in_file")]),
+
+                  # calculate connectivity data
+                  (unzip, conn, [("out_file", "fmri")]),
+
+                  # map region ids to label, full_name, x, y, z
+                  (conn, mapper, [("regions", "regions")]),
+
+                  # jsonify connectivity data
+                  (conn, exportconn, [("normalized_matrix", "normalized_matrix")]),
+                  (mapper, exportconn, [("mapped_regions", "regions")]),
+
+                  # save results
+                  (infosource, datasink, [("subject_id", "container")]),
+                  (exportconn, datasink, [("normalized_matrix", "connectivity.@nm")]),
+                  (exportconn, datasink, [("regions", "connectivity.@r")]),
                   ])
-
-#smooth = Node(Smooth(), name='smoothing')
-#smooth.inputs.fwhm = 5.0
-
-#metaflow.connect(datasource, "func", smooth, "in_file")
-
-#tfilter = Node(TemporalFilter(), name="tfilter")
-#tfilter.inputs.highpass_sigma = 1389
-
-#metaflow.connect(smooth, "smoothed_file", tfilter, "in_file")
-
-#gunzip = Node(Gunzip(), name="gunzip")
-
-#metaflow.connect(tfilter, "out_file", gunzip, "in_file")
-
-#conn = Node(FunctionalConnectivity(), name="conn")
-#conn.inputs.atlas = os.path.join(basedir, "atlas", "aal_sampled.nii")
-
-#metaflow.connect(gunzip, "out_file", conn, "fmri")
-
-#def save_connectivity_data(basedir, normalized_matrix, regions):
-    #print normalized_matrix
-    #print regions
-    ##import os
-    ##import json
-    ##regions_fname = os.path.join(
-    ##with open(
-    ##json.dumps(regions.tolist(),
-    ##print regions
-    ##print "ererer"
-
-#save_conn = Node(Function(input_names=["basedir", "normalized_matrix", "regions"],
-                          #output_names=["regions_file"],
-                          #function=save_connectivity_data),
-                 #name="save_conn")
-#save_conn.inputs.basedir = basedir
-
-#metaflow.connect(conn, "normalized_matrix", save_conn, "normalized_matrix")
-#metaflow.connect(conn, "regions", save_conn, "regions")
-
-#datasink = Node(DataSink(), name="sinker")
-#datasink.inputs.base_directory = basedir + "/outputs"
-#datasink.inputs.parameterization = False
-
-#metaflow.connect(infosource, "subject_id", datasink, "container")
-#metaflow.connect(tfilter, "out_file", datasink, "filtered")
-
-##def print_output(val):
-    ##print "here"
-    ##print val
-    ##return 0
-
-##function = Node(Function(input_names=["val"], output_names="blub", function=print_output), name="function")
-
-##metaflow.connect(datasource, "func", function, "val")
 
 metaflow.run(plugin="Linear")
 

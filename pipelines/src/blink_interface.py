@@ -65,14 +65,9 @@ class RegionsMapper(BaseInterface):
         definitions = dict()
         def_fname = self.inputs.definitions
         with open(def_fname, "rb") as def_file:
-            reader = csv.reader(def_file)
+            reader = csv.reader(def_file, delimiter="\t")
             for row in reader:
                 region_id = row[0]
-
-                definition = {}
-
-                definition["label"] = row[1]
-                definition["full_name"] = row[2]
 
                 try:
                     x = int(row[3])
@@ -82,11 +77,15 @@ class RegionsMapper(BaseInterface):
                 except IndexError:
                     coords = self.calc_center_of_region(region_id)
 
-                definition["x"] = coords["x"]
-                definition["y"] = coords["y"]
-                definition["z"] = coords["z"]
+                d = dict(
+                    label=row[1],
+                    full_name=row[2],
+                    x=coords[0],
+                    y=coords[1],
+                    z=coords[2],
+                )
 
-                definitions[region_id] = definition
+                definitions[region_id] = d
 
         return definitions
 
@@ -111,14 +110,12 @@ class RegionsMapper(BaseInterface):
         regions = self.inputs.regions
 
         for region_id in regions:
-            d = definitions[region_id]
+            d = definitions[str(region_id)]
 
             if not d:
                 raise "Missing definition for region id %i." % region_id
 
-            mapped_region = [region_id]
-            mapped_region += d
-            mapped_regions.append(mapped_region)
+            mapped_regions.append(d)
 
         return mapped_regions
 
