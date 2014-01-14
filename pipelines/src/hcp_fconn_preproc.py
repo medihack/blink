@@ -160,4 +160,4 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
 metaflow.run(plugin="Linear")
 
-print "Finished"
+print "Finished."
