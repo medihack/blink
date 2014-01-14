@@ -27,7 +27,8 @@ infosource.iterables = ("subject_id", subjects)
 
 templates = dict(
     func="{subject_id}/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz",
-    struct="{subject_id}/MNINonLinear/T1w_restore_brain.nii.gz"
+    struct="{subject_id}/MNINonLinear/T1w_restore_brain.nii.gz",
+    brain_mask="{subject_id}/MNINonLinear/brainmask_fs.nii.gz"
 )
 datasource = Node(SelectFiles(templates), name="datasource")
 datasource.inputs.base_directory = basedir
@@ -68,6 +69,10 @@ concat = Node(Function(input_names=["in_files"],
                        output_names="out_file",
                        function=concat),
               name="concat")
+
+samplemask = Node(ApplyXfm(apply_xfm=True), name="samplemask")
+samplemask.inputs.in_matrix_file = os.path.join(basedir, "data", "ident.mat")
+samplemask.inputs.interp = "nearestneighbour"
 
 glm = Node(GLM(), name="glm")
 glm.inputs.out_res_name = "func_regressed.nii.gz"
@@ -130,6 +135,9 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (sampleseg, meants, [("out_file", "mask")]),
                   (datasource, meants, [("func", "in_file")]),
                   (meants, concat, [("out_file", "in_files")]),
+                  (datasource, samplemask, [("brain_mask", "in_file")]),
+                  (datasource, samplemask, [("func", "reference")]),
+                  (samplemask, glm, [("out_file", "mask")]),
                   (concat, glm, [("out_file", "design")]),
                   (datasource, glm, [("func", "in_file")]),
 
@@ -158,6 +166,7 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (exportconn, datasink, [("regions", "connectivity.@r")]),
                   ])
 
+metaflow.write_graph(graph2use="flat")
 metaflow.run(plugin="Linear")
 
 print "Finished."
