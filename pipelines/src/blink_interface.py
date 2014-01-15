@@ -9,7 +9,7 @@ import csv
 
 class RegionsMapperInputSpec(BaseInterfaceInputSpec):
     regions = traits.Array(exists=True, desc="the region ids to map")
-    definitions = File(exists=True, desc="the definition of the regions in CSV format")
+    definitions = File(exists=True, desc="the definition of the regions in tab-delimited format")
     atlas = File(desc="an atlas volume for finding the center of a region")
 
 
@@ -136,15 +136,15 @@ class FunctionalConnectivityInputSpec(BaseInterfaceInputSpec):
 class FunctionalConnectivityOutputSpec(TraitedSpec):
     matrix = traits.Array(
         shape=(None, None),
-        desc="the connectivity matrix (using the pearson correlation)"
+        desc="the connectivity matrix (calculated using the pearson correlation)"
     )
     p_values = traits.Array(
         shape=(None, None),
-        desc="a p value for each value in the connectivity matrix"
+        desc="a p-value for each the connectivity matrix element"
     )
     normalized_matrix = traits.Array(
         shape=(None, None),
-        desc="the normalized connectivity matrix (using the Fisher Z transformation)"
+        desc="the normalized connectivity matrix (Fisher Z transformed)"
     )
     regions = traits.Array(
         shape=(None,),
