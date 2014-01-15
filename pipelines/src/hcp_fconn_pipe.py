@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import sys
+import re
 import os
 from nipype.pipeline.engine import Node, MapNode, Workflow
 from nipype.interfaces.utility import IdentityInterface
@@ -12,7 +14,24 @@ from nipype.interfaces.utility import Function
 from nipype.algorithms.misc import Gunzip
 from blink_interface import FunctionalConnectivity, RegionsMapper
 
-subjects = ["100408"]
+if len(sys.argv) != 2 or not os.path.isfile(sys.argv[1]):
+    print "Please provide a file with subject ids (one per line)."
+    print "May be created with './manage_subjects -l path_to_subjects_folder'"
+    sys.exit(2)
+
+subjects = []
+
+with open(sys.argv[1]) as subjects_file:
+    for line in subjects_file:
+        line = line.strip()
+        line = re.sub(r"#.*", "", line) # remove comments
+        if not line:
+            continue
+        elif re.match(r"^\d", line):
+            subjects.append(line)
+        else:
+            print "Invalid subject id: " + line
+            sys.exit(2)
 
 basedir = os.path.dirname(os.path.realpath(__file__))
 basedir = os.path.join(basedir, "..", "workspace")
@@ -31,7 +50,7 @@ templates = dict(
     brain_mask="{subject_id}/MNINonLinear/brainmask_fs.nii.gz"
 )
 datasource = Node(SelectFiles(templates), name="datasource")
-datasource.inputs.base_directory = basedir
+datasource.inputs.base_directory = os.path.join(basedir, "subjects")
 
 segment = Node(FAST(), name="segment")
 segment.inputs.no_pve = True
@@ -170,6 +189,6 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   ])
 
 metaflow.write_graph(graph2use="flat")
-metaflow.run(plugin="Linear")
+metaflow.run(plugin="MultiProc")
 
 print "Finished."
