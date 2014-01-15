@@ -134,18 +134,52 @@ exportconn = Node(Function(input_names=["normalized_matrix", "regions"],
                        function=export_conn),
               name="export_conn")
 
+def create_network_properties(subject_id):
+    import os
+    import json
+
+    preproc = "CSF, WM regressed; highpass filtering (sigma 1389); " +\
+            "smoothing (FWHM 5mm); pearson correlation; Fisher Z tranformation; " +\
+            "see https://github.com/medihack/blink for full Nipype pipeline"
+
+    props = dict(
+        title=subject_id + " (rfMRI_REST1_LR)",
+        project="HCP Connectivity Evaluation",
+        modality="fmri",
+        atlas="Automated Anatomical Labeling (AAL)",
+        subject_type="single",
+        preprocessing=preproc
+    )
+
+    props_fname = os.path.join(os.getcwd(), "network_properties.json")
+    with open(props_fname, "w") as f:
+        json.dump(props, f)
+
+    return props_fname
+
+networkprops = Node(Function(input_names=["subject_id"],
+                             output_names=["network_properties"],
+                             function=create_network_properties),
+                    name="network_props")
+
 datasink = Node(DataSink(), name="sinker")
 datasink.inputs.base_directory = basedir + "/outputs"
 datasink.inputs.parameterization = False
+datasink.inputs.substitutions = [
+    ("network_properties", "network"),
+    ("normalized_matrix", "matrix"),
+]
 
-#def debug(val):
-    #print val
-    #return None
+# debug node that is normally not used
+def debug(input):
+    print type(input)
+    print input
+    return None
 
-#debug = Node(Function(input_names=["val"],
-                      #output_names="output",
-                      #function=debug),
-             #name="debug")
+debug = Node(Function(input_names=["input"],
+                      output_names=[],
+                      function=debug),
+             name="debug")
 
 metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
@@ -182,10 +216,14 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (conn, exportconn, [("normalized_matrix", "normalized_matrix")]),
                   (mapper, exportconn, [("mapped_regions", "regions")]),
 
+                  # write network properties
+                  (infosource, networkprops, [("subject_id", "subject_id")]),
+
                   # save results
                   (infosource, datasink, [("subject_id", "container")]),
                   (exportconn, datasink, [("normalized_matrix", "connectivity.@nm")]),
                   (exportconn, datasink, [("regions", "connectivity.@r")]),
+                  (networkprops, datasink, [("network_properties", "@props")]),
                   ])
 
 metaflow.write_graph(graph2use="flat")
