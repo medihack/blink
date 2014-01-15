@@ -179,11 +179,11 @@ class FunctionalConnectivity(BaseInterface):
         atlas_img = nb.load(atlas_fname)
         atlas_data = atlas_img.get_data()
 
-        result = self.gen_fconn(fmri_data, atlas_data)
-        self.matrix = result["matrix"]
-        self.p_values = result["p_values"]
-        self.normalized_matrix = result["normalized_matrix"]
-        self.regions = result["regions"]
+        results = self.gen_fconn(fmri_data, atlas_data)
+        self.matrix = results["matrix"]
+        self.p_values = results["p_values"]
+        self.normalized_matrix = results["normalized_matrix"]
+        self.regions = results["regions"]
 
         return runtime
 
