@@ -5,7 +5,7 @@ from nipype.pipeline.engine import Node, MapNode, Workflow
 from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
 from nipype.interfaces.fsl.utils import Smooth, ImageMeants
-from nipype.interfaces.fsl.maths import TemporalFilter
+from nipype.interfaces.fsl.maths import ErodeImage, TemporalFilter
 from nipype.interfaces.fsl.preprocess import FAST, ApplyXfm
 from nipype.interfaces.fsl.model import GLM
 from nipype.interfaces.utility import Function
@@ -37,13 +37,15 @@ segment = Node(FAST(), name="segment")
 segment.inputs.no_pve = True
 segment.inputs.segments = True
 
-sampleseg = MapNode(ApplyXfm(apply_xfm=True), name="sampleseg", iterfield=["in_file"])
-sampleseg.inputs.in_matrix_file = os.path.join(basedir, "data", "ident.mat")
-sampleseg.inputs.interp = "nearestneighbour"
-
 def del_gm_file(tissue_class_files):
     del tissue_class_files[1]
     return tissue_class_files
+
+erode = MapNode(ErodeImage(), name="erode", iterfield=["in_file"])
+
+sampleseg = MapNode(ApplyXfm(apply_xfm=True), name="sampleseg", iterfield=["in_file"])
+sampleseg.inputs.in_matrix_file = os.path.join(basedir, "data", "ident.mat")
+sampleseg.inputs.interp = "nearestneighbour"
 
 meants = MapNode(ImageMeants(), name="meants", iterfield=["mask"])
 
@@ -130,7 +132,8 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # regress out csf and wm
                   (datasource, segment, [("struct", "in_files")]),
-                  (segment, sampleseg, [(("tissue_class_files", del_gm_file), "in_file")]),
+                  (segment, erode, [(("tissue_class_files", del_gm_file), "in_file")]),
+                  (erode, sampleseg, [("out_file", "in_file")]),
                   (datasource, sampleseg, [("func", "reference")]),
                   (sampleseg, meants, [("out_file", "mask")]),
                   (datasource, meants, [("func", "in_file")]),
