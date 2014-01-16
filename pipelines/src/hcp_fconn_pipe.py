@@ -42,8 +42,8 @@ subjects = []
 
 with open(sys.argv[1]) as subjects_file:
     for line in subjects_file:
-        line = line.strip()
         line = re.sub(r"#.*", "", line) # remove comments
+        line = line.strip()
         if not line:
             continue
         elif re.match(r"^\d", line):

@@ -47,8 +47,8 @@ subjects = []
 ###
 with open(sys.argv[1]) as subjects_file:
     for line in subjects_file:
-        line = line.strip()
         line = re.sub(r"#.*", "", line) # remove comments
+        line = line.strip()
         if not line:
             continue
         elif re.match(r"^\d", line):
@@ -58,6 +58,8 @@ with open(sys.argv[1]) as subjects_file:
             sys.exit(2)
 
 for subject in subjects:
+    print "Uploading subject: " + subject
+
     folder = os.path.join(basedir, subject, "rfMRI_Rest1_LR")
 
     if not os.path.isdir(folder):
