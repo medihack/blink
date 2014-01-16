@@ -221,9 +221,9 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # save results
                   (infosource, datasink, [("subject_id", "container")]),
-                  (exportconn, datasink, [("normalized_matrix", "connectivity.@nm")]),
-                  (exportconn, datasink, [("regions", "connectivity.@r")]),
-                  (networkprops, datasink, [("network_properties", "@props")]),
+                  (exportconn, datasink, [("normalized_matrix", "rfMRI_Rest1_LR.@m")]),
+                  (exportconn, datasink, [("regions", "rfMRI_Rest1_LR.@r")]),
+                  (networkprops, datasink, [("network_properties", "rfMRI_Rest1_LR.@p")]),
                   ])
 
 metaflow.write_graph(graph2use="flat")

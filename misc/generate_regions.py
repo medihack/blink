@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+###
+# Generates pseudo regions
+###
+
 import sys
 import getopt
 import csv

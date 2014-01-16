@@ -1,5 +1,9 @@
 #!/usr/bin/python
 
+###
+# Generates a random matrix
+###
+
 import sys
 import getopt
 import numpy
