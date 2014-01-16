@@ -69,7 +69,7 @@ class Network(object):
     def regions(self, data):
         self.regions_data = data
 
-    def add_region(self, label, full_name, x, y, z, color, note):
+    def add_region(self, label, full_name, x, y, z, *args):
         region = {
             'label': label,
             'full_name': full_name,
@@ -79,13 +79,16 @@ class Network(object):
         }
 
         # optional
-        if color:
-            region['color'] = color
+        if args:
+            region['color'] = args[0]
 
-        if note:
-            region['note'] = note
+        if len(args) > 1:
+            region['note'] = args[1]
 
         self.check_region(region)
+
+        if self.regions is None:
+            self.regions = []
 
         self.regions.append(region)
 
@@ -107,13 +110,13 @@ class Network(object):
             self.check_region(region)
 
     def check_region(self, region):
-        if not region['label']:
+        if not "label" in region:
             raise Exception('missing region label')
 
-        if not region['full_name']:
+        if not "full_name" in region:
             raise Exception('missing region full name')
 
-        if not (region['x'] and region['y'] and region['z']):
+        if not "x" in region or not "y" in region or not "z" in region:
             raise Exception('missing region coordinates')
 
     def to_json(self):

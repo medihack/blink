@@ -113,7 +113,7 @@ class RegionsMapper(BaseInterface):
             d = definitions[str(region_id)]
 
             if not d:
-                raise "Missing definition for region id %i." % region_id
+                raise Exception("Missing definition for region id %i." % region_id)
 
             mapped_regions.append(d)
 
@@ -198,13 +198,13 @@ class FunctionalConnectivity(BaseInterface):
     def gen_fconn(self, fmri_data, atlas_data):
         # some validation checkings
         if len(fmri_data.shape) != 4:
-            raise "fMRI data must have four dimensions (spatial + temporal)"
+            raise Exception("fMRI data must have four dimensions (spatial + temporal)")
 
         if len(atlas_data.shape) != 3:
-            raise "Atlas data must have three dimensions (spatial)"
+            raise Exception("Atlas data must have three dimensions (spatial)")
 
         if fmri_data.shape[:3] != atlas_data.shape:
-            raise "fMRI and atlas data must have same spatial dimensions"
+            raise Exception("fMRI and atlas data must have same spatial dimensions")
 
         # calculate number of unique regions in atlas
         # (assumes that 0 is air)

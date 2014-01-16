@@ -3,6 +3,7 @@
 import sys
 import re
 import os
+import csv
 from nipype.pipeline.engine import Node, MapNode, Workflow
 from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
@@ -14,6 +15,24 @@ from nipype.interfaces.utility import Function
 from nipype.algorithms.misc import Gunzip
 from blink_interface import FunctionalConnectivity, RegionsMapper
 
+###
+# options
+###
+options = dict(
+    workflow_plugin="MultiProc",
+    number_of_processors=6
+)
+
+###
+# setup basedir
+###
+basedir = os.path.dirname(os.path.realpath(__file__))
+basedir = os.path.join(basedir, "..", "workspace")
+basedir = os.path.realpath(basedir)
+
+###
+# scan subjects to process from provided file
+###
 if len(sys.argv) != 2 or not os.path.isfile(sys.argv[1]):
     print "Please provide a file with subject ids (one per line)."
     print "May be created with './manage_subjects -l path_to_subjects_folder'"
@@ -33,10 +52,47 @@ with open(sys.argv[1]) as subjects_file:
             print "Invalid subject id: " + line
             sys.exit(2)
 
-basedir = os.path.dirname(os.path.realpath(__file__))
-basedir = os.path.join(basedir, "..", "workspace")
-basedir = os.path.realpath(basedir)
+###
+# scan subjects data from the HCP subjects CSV file
+###
+subjects_data = dict()
+subjects_data_fname = os.path.join(basedir, "subjects", "subjects_data.csv")
+with open(subjects_data_fname) as sd_f:
+    sd_reader = csv.reader(sd_f)
+    for idx, row in enumerate(sd_reader):
+        if idx == 0:
+            continue  # skip the header
 
+        subj_data = dict()
+
+        subject_id = row[0].strip()
+        if not re.match(r"^\d+$", subject_id):
+            raise Exception("Invalid subject id: " + subject_id)
+
+        gender = row[1].strip()
+        if gender == "F":
+            subj_data["gender"] = "female"
+        elif gender == "M":
+            subj_data["gender"] = "male"
+        else:
+            raise Exception("Invalid gender of subject: " + subject_id)
+
+        # Currently not used as the HCP data has a complicated format,
+        # like "15-20" or ">35". This is currently not supported by
+        # the Blink model.
+        #age = row[2].strip()
+        #if re.match(r"^\d+-\d+$", age):
+            #subj_data["age"] = age
+        #elif re.match(r"^[<>]\d+$", age):
+            #subj_data["age"] = age
+        #else:
+            #raise Exception("Invalid age of subject: " + subject_id)
+
+        subjects_data[subject_id] = subj_data
+
+###
+# setup workflow
+###
 metaflow = Workflow(name="hcp_fconn_preproc")
 metaflow.base_dir = os.path.join(basedir, "cache")
 
@@ -134,7 +190,7 @@ exportconn = Node(Function(input_names=["normalized_matrix", "regions"],
                        function=export_conn),
               name="export_conn")
 
-def create_network_properties(subject_id):
+def create_network_properties(subject_id, subjects_data):
     import os
     import json
 
@@ -142,12 +198,15 @@ def create_network_properties(subject_id):
             "smoothing (FWHM 5mm); pearson correlation; Fisher Z tranformation; " +\
             "see https://github.com/medihack/blink for full Nipype pipeline"
 
+    subj_data = subjects_data[subject_id]
+
     props = dict(
         title=subject_id + " (rfMRI_REST1_LR)",
         project="HCP Connectivity Evaluation",
         modality="fmri",
         atlas="Automated Anatomical Labeling (AAL)",
         subject_type="single",
+        gender=subj_data["gender"],
         preprocessing=preproc
     )
 
@@ -157,10 +216,11 @@ def create_network_properties(subject_id):
 
     return props_fname
 
-networkprops = Node(Function(input_names=["subject_id"],
+networkprops = Node(Function(input_names=["subject_id", "subjects_data"],
                              output_names=["network_properties"],
                              function=create_network_properties),
                     name="network_props")
+networkprops.inputs.subjects_data = subjects_data
 
 datasink = Node(DataSink(), name="sinker")
 datasink.inputs.base_directory = basedir + "/outputs"
@@ -227,6 +287,9 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   ])
 
 metaflow.write_graph(graph2use="flat")
-metaflow.run(plugin="MultiProc")
+metaflow.run(
+    plugin=options["workflow_plugin"],
+    plugin_args={"n_procs": options["number_of_processors"]}
+)
 
-print "Finished."
+print "Workflow finished."
