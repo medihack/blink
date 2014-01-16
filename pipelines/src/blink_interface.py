@@ -131,6 +131,16 @@ class FunctionalConnectivityInputSpec(BaseInterfaceInputSpec):
         desc='an atlas that defines the regions',
         mandatory=True
     )
+    absolute = traits.Bool(
+        usedefault=True,
+        default_value=True,
+        desc="absolute values in correlation and normalized matrix"
+    )
+    zero_diagonal = traits.Bool(
+        usedefault=True,
+        default_value=True,
+        desc="zero values on diagonal in correlation and normalized matrix"
+    )
 
 
 class FunctionalConnectivityOutputSpec(TraitedSpec):
@@ -257,6 +267,15 @@ class FunctionalConnectivity(BaseInterface):
         assert (zmat == zmat.transpose()).all()
         assert zmat.shape[0] == zmat.shape[1]
         assert (zmat.diagonal() == 1).all()
+
+        # postprocess matrices
+        if self.inputs.absolute:
+            mat = np.absolute(mat)
+            zmat = np.absolute(zmat)
+
+        if self.inputs.zero_diagonal:
+            np.fill_diagonal(mat, 0)
+            np.fill_diagonal(zmat, 0)
 
         return {
             "matrix": mat,
