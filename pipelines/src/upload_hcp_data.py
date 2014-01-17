@@ -16,6 +16,28 @@ basedir = os.path.realpath(basedir)
 ###
 # scan subjects to process from provided file
 ###
+if len(sys.argv) != 2 or not os.path.isfile(sys.argv[1]):
+    print "Please provide a file with subject ids (one per line)."
+    print "May be created with './manage_subjects -l path_to_subjects_folder'"
+    sys.exit(2)
+
+subjects = []
+
+with open(sys.argv[1]) as subjects_file:
+    for line in subjects_file:
+        line = re.sub(r"#.*", "", line) # remove comments
+        line = line.strip()
+        if not line:
+            continue
+        elif re.match(r"^\d", line):
+            subjects.append(line)
+        else:
+            print "Invalid subject id: " + line
+            sys.exit(2)
+
+###
+# create network
+###
 def create_network(network_data, matrix_data, regions_data):
     network = client.Network(network_data.pop("title"))
 
@@ -35,28 +57,9 @@ def create_network(network_data, matrix_data, regions_data):
 
     return network
 
-if len(sys.argv) != 2 or not os.path.isfile(sys.argv[1]):
-    print "Please provide a file with subject ids (one per line)."
-    print "May be created with './manage_subjects -l path_to_subjects_folder'"
-    sys.exit(2)
-
-subjects = []
-
 ###
-# Create and send network
+# iterate subjects and send networks
 ###
-with open(sys.argv[1]) as subjects_file:
-    for line in subjects_file:
-        line = re.sub(r"#.*", "", line) # remove comments
-        line = line.strip()
-        if not line:
-            continue
-        elif re.match(r"^\d", line):
-            subjects.append(line)
-        else:
-            print "Invalid subject id: " + line
-            sys.exit(2)
-
 for subject in subjects:
     print "Uploading subject: " + subject
 
