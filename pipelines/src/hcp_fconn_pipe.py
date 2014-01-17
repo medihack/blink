@@ -33,23 +33,36 @@ basedir = os.path.realpath(basedir)
 ###
 # scan subjects to process from provided file
 ###
-if len(sys.argv) != 2 or not os.path.isfile(sys.argv[1]):
-    print "Please provide a file with subject ids (one per line)."
-    print "May be created with './manage_subjects -l path_to_subjects_folder'"
+if len(sys.argv) < 2:
+    print "Please provide (space separated) subject ids to process."
+    print "You may provide a file with subject ids (one per line) with the -f option."
+    print "Such a file may be created with './manage_subjects -l path_to_subjects_folder'"
+    print "Examples:"
+    print sys.argv[0] + " 123093 329111 999323"
+    print sys.argv[0] + " -f subjects.txt"
     sys.exit(2)
 
 subjects = []
 
-with open(sys.argv[1]) as subjects_file:
-    for line in subjects_file:
-        line = re.sub(r"#.*", "", line) # remove comments
-        line = line.strip()
-        if not line:
-            continue
-        elif re.match(r"^\d", line):
-            subjects.append(line)
+if sys.argv[1] == "-f":
+    with open(sys.argv[2]) as subjects_file:
+        for line in subjects_file:
+            line = re.sub(r"#.*", "", line) # remove comments
+            line = line.strip()
+            if not line:
+                continue
+            elif re.match(r"^\d{6}$", line):
+                subjects.append(line)
+            else:
+                print "Invalid subject id: " + line
+                sys.exit(2)
+else:
+    del sys.argv[0]
+    for subject_id in sys.argv:
+        if re.match(r"^\d{6}$", subject_id):
+            subjects.append(subject_id)
         else:
-            print "Invalid subject id: " + line
+            print "Invalid subject id: " + subject_id
             sys.exit(2)
 
 ###
