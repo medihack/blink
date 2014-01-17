@@ -77,16 +77,13 @@ with open(subjects_data_fname) as sd_f:
         else:
             raise Exception("Invalid gender of subject: " + subject_id)
 
-        # Currently not used as the HCP data has a complicated format,
-        # like "15-20" or ">35". This is currently not supported by
-        # the Blink model.
-        #age = row[2].strip()
-        #if re.match(r"^\d+-\d+$", age):
-            #subj_data["age"] = age
-        #elif re.match(r"^[<>]\d+$", age):
-            #subj_data["age"] = age
-        #else:
-            #raise Exception("Invalid age of subject: " + subject_id)
+        age = row[2].strip()
+        if re.match(r"^\d+-\d+$", age):
+            subj_data["age"] = age
+        elif re.match(r"^[<>]\d+$", age):
+            subj_data["age"] = age
+        else:
+            raise Exception("Invalid age of subject: " + subject_id)
 
         subjects_data[subject_id] = subj_data
 
@@ -207,6 +204,7 @@ def create_network_properties(subject_id, subjects_data):
         atlas="Automated Anatomical Labeling (AAL)",
         subject_type="single",
         gender=subj_data["gender"],
+        age=subj_data["age"],
         preprocessing=preproc
     )
 
