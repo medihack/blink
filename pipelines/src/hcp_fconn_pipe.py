@@ -204,9 +204,15 @@ def create_network_properties(subject_id, subjects_data):
     import os
     import json
 
-    preproc = "CSF, WM regressed; highpass filtering (sigma 1389); " +\
-            "smoothing (FWHM 5mm); pearson correlation; Fisher Z tranformation; " +\
-            "see https://github.com/medihack/blink for full Nipype pipeline"
+    preproc = ("CSF, WM regressed; highpass filtering (sigma 1389); "
+               "smoothing (FWHM 5mm); pearson correlation; Fisher Z tranformation; "
+               "see https://github.com/medihack/blink for full Nipype pipeline")
+
+    notes = ("Data were provided by the Human Connectome Project, WU-Minn Consortium "
+             "(Principal Investigators: David Van Essen and Kamil Ugurbil; 1U54MH091657) "
+             "funded by the 16 NIH Institutes and Centers that support the NIH Blueprint "
+             "for Neuroscience Research; and by the McDonnell Center for Systems "
+             "Neuroscience at Washington University.")
 
     subj_data = subjects_data[subject_id]
 
@@ -218,7 +224,8 @@ def create_network_properties(subject_id, subjects_data):
         subject_type="single",
         gender=subj_data["gender"],
         age=subj_data["age"],
-        preprocessing=preproc
+        preprocessing=preproc,
+        notes=notes
     )
 
     props_fname = os.path.join(os.getcwd(), "network_properties.json")
