@@ -9,4 +9,6 @@ eggs
 parts
 src/*.egg-info
 
-pipelines/workspace/
+pipelines/workspace/cache
+pipelines/workspace/outputs
+pipelines/workspace/subjects
