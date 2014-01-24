@@ -19,8 +19,9 @@ from blink_interface import FunctionalConnectivity, RegionsMapper
 # options
 ###
 options = dict(
-    workflow_plugin="MultiProc",
-    number_of_processors=6
+    workflow_plugin="Linear",
+    number_of_processors=1,
+    save_graph=False
 )
 
 ###
@@ -304,7 +305,9 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (networkprops, datasink, [("network_properties", "rfMRI_Rest1_LR.@p")]),
                   ])
 
-metaflow.write_graph(graph2use="flat")
+if options["save_graph"]:
+    metaflow.write_graph(graph2use="flat")
+
 metaflow.run(
     plugin=options["workflow_plugin"],
     plugin_args={"n_procs": options["number_of_processors"]}
