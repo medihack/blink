@@ -20,7 +20,8 @@ from blink_interface import FunctionalConnectivity, RegionsMapper
 ###
 options = dict(
     workflow_plugin="Linear",
-    number_of_processors=1,
+    number_of_processors=2,
+    queue="x5_amd",
     save_graph=False
 )
 
@@ -310,7 +311,11 @@ if options["save_graph"]:
 
 metaflow.run(
     plugin=options["workflow_plugin"],
-    plugin_args={"n_procs": options["number_of_processors"]}
+    plugin_args={
+        "n_procs": options["number_of_processors"],
+        "qsub_args": "-q %s" % (options["queue"]),
+        "bsub_args": "-q %s" % (options["queue"])
+    }
 )
 
 print "Workflow finished."
