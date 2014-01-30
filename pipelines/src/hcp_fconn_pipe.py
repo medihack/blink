@@ -105,8 +105,8 @@ with open(subjects_data_fname) as sd_f:
 ###
 # setup workflow
 ###
-metaflow = Workflow(name="hcp_fconn_preproc")
-metaflow.base_dir = os.path.join(basedir, "cache")
+workflow = Workflow(name="hcp_fconn")
+workflow.base_dir = os.path.join(basedir, "cache")
 
 infosource = Node(IdentityInterface(fields=["subject_id"]),
                   name="infosource")
@@ -261,7 +261,7 @@ debug = Node(Function(input_names=["input"],
                       function=debug),
              name="debug")
 
-metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
+workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # regress out csf and wm
                   (datasource, segment, [("struct", "in_files")]),
@@ -307,9 +307,9 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   ])
 
 if options["save_graph"]:
-    metaflow.write_graph(graph2use="flat")
+    workflow.write_graph(graph2use="flat")
 
-metaflow.run(
+workflow.run(
     plugin=options["workflow_plugin"],
     plugin_args={
         "n_procs": options["number_of_processors"],
