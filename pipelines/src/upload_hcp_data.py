@@ -30,7 +30,7 @@ subjects = []
 if sys.argv[1] == "-f":
     with open(sys.argv[2]) as subjects_file:
         for line in subjects_file:
-            line = re.sub(r"#.*", "", line) # remove comments
+            line = re.sub(r"#.*", "", line)  # remove comments
             line = line.strip()
             if not line:
                 continue
