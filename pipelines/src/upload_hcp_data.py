@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
-import sys
-import re
+import utils
 import os
 import json
 from blink import client
@@ -14,39 +13,9 @@ basedir = os.path.join(basedir, "..", "workspace", "outputs")
 basedir = os.path.realpath(basedir)
 
 ###
-# scan subjects to process from provided file
+# scan subjects to process
 ###
-if len(sys.argv) < 2:
-    print "Please provide (space separated) subject ids to process."
-    print "You may provide a file with subject ids (one per line) with the -f option."
-    print "Such a file may be created with './manage_subjects -l path_to_subjects_folder'"
-    print "Examples:"
-    print sys.argv[0] + " 123093 329111 999323"
-    print sys.argv[0] + " -f subjects.txt"
-    sys.exit(2)
-
-subjects = []
-
-if sys.argv[1] == "-f":
-    with open(sys.argv[2]) as subjects_file:
-        for line in subjects_file:
-            line = re.sub(r"#.*", "", line)  # remove comments
-            line = line.strip()
-            if not line:
-                continue
-            elif re.match(r"^\d{6}$", line):
-                subjects.append(line)
-            else:
-                print "Invalid subject id: " + line
-                sys.exit(2)
-else:
-    del sys.argv[0]
-    for subject_id in sys.argv:
-        if re.match(r"^\d{6}$", subject_id):
-            subjects.append(subject_id)
-        else:
-            print "Invalid subject id: " + subject_id
-            sys.exit(2)
+subjects = utils.get_subjects()
 
 ###
 # create network

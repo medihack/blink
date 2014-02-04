@@ -5,6 +5,82 @@ import numpy as np
 import scipy.stats as stats
 from scipy import ndimage
 import csv
+import os
+
+
+class AtlasSplitterInputSpec(BaseInterfaceInputSpec):
+    atlas = File(exists=True, desc="an atlas volume to split by region")
+
+
+class AtlasSplitterOuputSpec(TraitedSpec):
+    masks = File(desc="a mask for each region in the provided atlas")
+    mappings = traits.Dict(desc="mapping of region id to mask file")
+
+
+class AtlasSplitter(BaseInterface):
+    """
+    Splits a atlas and creates a mask for each region in the atlas.
+    Also provides a dictionary to associate each region id with
+    the appropriate mask file.
+
+    Example
+    -------
+
+    >>> import nipype.interfaces.blink as blink
+    >>> asplit = blink.AtlasSplitter()
+    >>> asplit.inputs.atlas = 'aal.nii'
+    >>> asplit.run()
+    """
+    input_spec = AtlasSplitterInputSpec
+    output_spec = AtlasSplitterOuputSpec
+
+    def _run_interface(self, runtime):
+        atlas_fname = self.inputs.atlas
+        atlas_img = nb.load(atlas_fname)
+
+        self.split_atlas(atlas_img)
+
+        return runtime
+
+    def _list_outputs(self):
+        outputs = self._outputs().get()
+        outputs["masks"] = self.masks
+        outputs["mappings"] = self.mappings
+        return outputs
+
+    def split_atlas(self, atlas_img):
+        atlas_data = atlas_img.get_data()
+
+        # calculate number of unique regions in atlas
+        # (assumes that 0 is air)
+        unique = np.unique(atlas_data.flatten())
+        regions = np.delete(unique, np.where(unique == 0))
+        regions = np.sort(regions)
+
+        # calculate masks
+        masks = dict()
+        for region_id in regions:
+            mask = np.copy(atlas_data)
+            mask[atlas_data != region_id] = 0
+            mask[mask != 0] = 1
+            masks[region_id] = mask
+
+        # save masks to disc and create mappings
+        mappings = dict()
+        for region_id, mask in masks.items():
+            fname = "region_mask_%s" % (region_id)
+            fname = os.path.join(os.getcwd(), fname)
+
+            nb.Nifti1Image(
+                mask,
+                atlas_img.get_affine(),
+                atlas_img.get_header()
+            ).to_filename(fname)
+
+            mappings[region_id] = fname
+
+        self.mappings = mappings
+        self.masks = mappings.values()
 
 
 class RegionsMapperInputSpec(BaseInterfaceInputSpec):
