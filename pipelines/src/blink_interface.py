@@ -13,8 +13,11 @@ class AtlasSplitterInputSpec(BaseInterfaceInputSpec):
 
 
 class AtlasSplitterOuputSpec(TraitedSpec):
-    masks = File(desc="a mask for each region in the provided atlas")
-    mappings = traits.Dict(desc="mapping of region id to mask file")
+    masks = traits.List(File(), desc="a mask for each region in the provided atlas")
+    mappings = traits.Dict(
+        traits.Either(traits.CInt(), traits.CFloat()),
+        File(),
+        desc="mapping of region id to mask file")
 
 
 class AtlasSplitter(BaseInterface):
@@ -68,7 +71,7 @@ class AtlasSplitter(BaseInterface):
         # save masks to disc and create mappings
         mappings = dict()
         for region_id, mask in masks.items():
-            fname = "region_mask_%s" % (region_id)
+            fname = "region_mask_%s.nii.gz" % (region_id)
             fname = os.path.join(os.getcwd(), fname)
 
             nb.Nifti1Image(
