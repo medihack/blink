@@ -16,7 +16,7 @@ class AtlasMergerInputSpec(BaseInterfaceInputSpec):
 
 class AtlasMergerOutputSpec(TraitedSpec):
     merged_atlas = File(desc="merged atlas")
-    merged_regions = traits.Array(desc="merged regions of both atlases")
+    merged_regions = File(desc="merged regions of both atlases")
 
 
 class AtlasMerger(BaseInterface):
