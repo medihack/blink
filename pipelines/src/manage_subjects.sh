@@ -41,10 +41,18 @@ if $unpack; then
         if [[ ${file} =~ "_3T_Structural_preproc" ]]; then
             unzip -n "$file" '*/MNINonLinear/T1w_restore_brain.nii.gz'
             unzip -n "$file" '*/MNINonLinear/brainmask_fs.nii.gz'
+            unzip -n "$file" '*/MNINonLinear/xfms/standard2acpc_dc.nii.gz'
         fi
 
         if [[ ${file} =~ "_3T_rfMRI_REST1_preproc" ]]; then
             unzip -n "$file" '*/MNINonLinear/*/rfMRI_REST1_LR.nii.gz'
+        fi
+
+        if [[ ${file} =~ "_3T_Diffusion_preproc" ]]; then
+            unzip -n "$file" '*/Diffusion/data.nii.gz'
+            unzip -n "$file" '*/Diffusion/nodif_brain_mask.nii.gz'
+            unzip -n "$file" '*/Diffusion/bvals'
+            unzip -n "$file" '*/Diffusion/bvecs'
         fi
     done
 fi

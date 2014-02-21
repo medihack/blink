@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 
-import sys
-import re
+import utils
 import os
-import csv
 from nipype.pipeline.engine import Node, MapNode, Workflow
 from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.io import SelectFiles, DataSink
@@ -20,7 +18,8 @@ from blink_interface import FunctionalConnectivity, RegionsMapper
 ###
 options = dict(
     workflow_plugin="Linear",
-    number_of_processors=1,
+    sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
+    number_of_processors=2,
     save_graph=False
 )
 
@@ -32,80 +31,21 @@ basedir = os.path.join(basedir, "..", "workspace")
 basedir = os.path.realpath(basedir)
 
 ###
-# scan subjects to process from provided file
+# scan subjects to process
 ###
-if len(sys.argv) < 2:
-    print "Please provide (space separated) subject ids to process."
-    print "You may provide a file with subject ids (one per line) with the -f option."
-    print "Such a file may be created with './manage_subjects -l path_to_subjects_folder'"
-    print "Examples:"
-    print sys.argv[0] + " 123093 329111 999323"
-    print sys.argv[0] + " -f subjects.txt"
-    sys.exit(2)
-
-subjects = []
-
-if sys.argv[1] == "-f":
-    with open(sys.argv[2]) as subjects_file:
-        for line in subjects_file:
-            line = re.sub(r"#.*", "", line) # remove comments
-            line = line.strip()
-            if not line:
-                continue
-            elif re.match(r"^\d{6}$", line):
-                subjects.append(line)
-            else:
-                print "Invalid subject id: " + line
-                sys.exit(2)
-else:
-    del sys.argv[0]
-    for subject_id in sys.argv:
-        if re.match(r"^\d{6}$", subject_id):
-            subjects.append(subject_id)
-        else:
-            print "Invalid subject id: " + subject_id
-            sys.exit(2)
+subjects = utils.get_subjects()
 
 ###
-# scan subjects data from the HCP subjects CSV file
+# scan subjects data
 ###
-subjects_data = dict()
 subjects_data_fname = os.path.join(basedir, "subjects", "subjects_data.csv")
-with open(subjects_data_fname) as sd_f:
-    sd_reader = csv.reader(sd_f)
-    for idx, row in enumerate(sd_reader):
-        if idx == 0:
-            continue  # skip the header
-
-        subj_data = dict()
-
-        subject_id = row[0].strip()
-        if not re.match(r"^\d+$", subject_id):
-            raise Exception("Invalid subject id: " + subject_id)
-
-        gender = row[1].strip()
-        if gender == "F":
-            subj_data["gender"] = "female"
-        elif gender == "M":
-            subj_data["gender"] = "male"
-        else:
-            raise Exception("Invalid gender of subject: " + subject_id)
-
-        age = row[2].strip()
-        if re.match(r"^\d+-\d+$", age):
-            subj_data["age"] = age
-        elif re.match(r"^[<>]\d+$", age):
-            subj_data["age"] = age
-        else:
-            raise Exception("Invalid age of subject: " + subject_id)
-
-        subjects_data[subject_id] = subj_data
+subjects_data = utils.parse_subject_data(subjects_data_fname)
 
 ###
 # setup workflow
 ###
-metaflow = Workflow(name="hcp_fconn_preproc")
-metaflow.base_dir = os.path.join(basedir, "cache")
+workflow = Workflow(name="hcp_fconn")
+workflow.base_dir = os.path.join(basedir, "cache")
 
 infosource = Node(IdentityInterface(fields=["subject_id"]),
                   name="infosource")
@@ -197,9 +137,9 @@ def export_conn(normalized_matrix, regions):
     return (nm_fname, r_fname)
 
 exportconn = Node(Function(input_names=["normalized_matrix", "regions"],
-                       output_names=["normalized_matrix", "regions"],
-                       function=export_conn),
-              name="export_conn")
+                           output_names=["normalized_matrix", "regions"],
+                           function=export_conn),
+                  name="export_conn")
 
 def create_network_properties(subject_id, subjects_data):
     import os
@@ -260,7 +200,7 @@ debug = Node(Function(input_names=["input"],
                       function=debug),
              name="debug")
 
-metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
+workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # regress out csf and wm
                   (datasource, segment, [("struct", "in_files")]),
@@ -306,11 +246,15 @@ metaflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   ])
 
 if options["save_graph"]:
-    metaflow.write_graph(graph2use="flat")
+    workflow.write_graph(graph2use="flat")
 
-metaflow.run(
+workflow.run(
     plugin=options["workflow_plugin"],
-    plugin_args={"n_procs": options["number_of_processors"]}
+    plugin_args={
+        "n_procs": options["number_of_processors"],
+        "qsub_args": options["sub_args"],
+        "bsub_args": options["sub_args"]
+    }
 )
 
 print "Workflow finished."

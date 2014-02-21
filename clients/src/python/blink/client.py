@@ -135,7 +135,7 @@ class Request():
         if dev:
             self._url = "http://127.0.0.1:8000/blink/api/networks/"
         else:
-            self._url = "http://blink.neuromia.org/api/networks/"
+            self._url = "http://neuromia.org/blink/api/networks/"
 
         self._debug = debug
 
