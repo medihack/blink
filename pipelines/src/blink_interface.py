@@ -5,6 +5,125 @@ import numpy as np
 import scipy.stats as stats
 from scipy import ndimage
 import csv
+import os
+
+class AtlasMergerInputSpec(BaseInterfaceInputSpec):
+    atlas1 = File(exists=True, desc="1st input atlas")
+    atlas2 = File(exists=True, desc="2nd input atlas")
+    regions1 = File(exists=True, desc="1st input region description")
+    regions2 = File(exists=True, desc="2nd input region description")
+
+
+class AtlasMergerOutputSpec(TraitedSpec):
+    merged_atlas = File(desc="merged atlas")
+    merged_regions = traits.Array(desc="merged regions of both atlases")
+
+
+class AtlasMerger(BaseInterface):
+    """
+    Merges two atlases into a combined one. Output is new nifti combined atlas file and
+    new list of combined regions with new numbering, as well as new nift of old atlas with new numbering.
+    The first input atlas is the priority atlas, so regions defined in this atlas
+    will win in a conflicting situation over regions in the second atlas.
+    Zero, "0", must be nothing or air, in the atlas and region definition file.
+    """
+    input_spec = AtlasMergerInputSpec
+    output_spec = AtlasMergerOutputSpec
+
+    def _run_interface(self, runtime):
+        atlas1_fname = self.inputs.atlas1
+        atlas2_fname = self.inputs.atlas2
+        atlas1_img = nb.load(atlas1_fname)
+        atlas2_img = nb.load(atlas2_fname)
+        atlas1_data = atlas1_img.get_data()
+        atlas2_data = atlas2_img.get_data()
+        regions1_fname = self.inputs.regions1
+        regions2_fname = self.inputs.regions2
+
+        if atlas1_data.size != atlas2_data.size:
+            raise Exception("Atlases must have the same resolution - please resample!")
+
+        regions1 = self.parse_regions(regions1_fname)
+        regions2 = self.parse_regions(regions2_fname)
+
+        (new_atlas1, new_regions1, startpos) = self.redefine_regions(atlas1_data, regions1)
+        (new_atlas2, new_regions2, x) = self.redefine_regions(atlas2_data, regions2, startpos)
+        merged_atlas = self.merge_atlases(new_atlas1, new_atlas2)
+
+        self.write_atlas(new_atlas1,"newatlas1", atlas1_img)
+        self.write_atlas(new_atlas2,"newatlas2",atlas2_img)
+        self.merged_atlas = self.write_atlas(merged_atlas,"merged_atlas",atlas1_img)
+        self.merged_regions = self.merge_regions(merged_atlas, new_regions1, new_regions2)
+
+        return runtime
+
+    def parse_regions(self, fname):
+        with open(fname) as f:
+            freader = csv.reader(f, delimiter='\t')
+            regions = list()
+            for row in freader:
+                regions.append(row)
+        return regions
+
+    def redefine_regions(self, atlas, regions, startpos=1):
+        new_atlas = np.zeros(atlas.shape, 'int')
+        new_regions = list()
+        for region in regions:
+            new_atlas[atlas==int(region[0])] = startpos
+            new_region = list(region)
+            new_region[0] = startpos
+            new_regions.append(new_region)
+            startpos += 1
+        return (new_atlas, new_regions, startpos)
+
+    def merge_atlases(self, new_atlas1, new_atlas2):
+        shape = new_atlas1.shape
+        merged_atlas = np.zeros(shape, 'int')
+        for slice_index, slice_value in enumerate(merged_atlas):
+            for row_index, row_value in enumerate(slice_value):
+                for voxel_index, voxel_value in enumerate(row_value):
+                    voxel1 = new_atlas1[slice_index, row_index, voxel_index]
+                    voxel2 = new_atlas2[slice_index, row_index, voxel_index]
+                    if voxel1 > 0:
+                        merged_atlas[slice_index, row_index, voxel_index] = voxel1
+                    elif voxel2 > 0:
+                        merged_atlas[slice_index, row_index, voxel_index] = voxel2
+        return merged_atlas
+
+    def write_atlas(self, atlas, atlas_fname, oldatlas_img):
+        fname = os.path.join(os.getcwd(), atlas_fname)
+        nb.Nifti1Image(
+            atlas,
+            oldatlas_img.get_affine(),
+            oldatlas_img.get_header()
+        ).to_filename(fname)
+        return fname
+
+    def merge_regions(self, merged_atlas, new_regions1, new_regions2):
+        unique = np.unique(merged_atlas)
+        region_ids = np.delete(unique, np.where(unique == 0))
+        merged_regions = list()
+        for region_id in region_ids:
+            r = filter(lambda r: int(r[0]) == region_id, new_regions1)
+            if not r:
+                r = filter(lambda r: int(r[0]) == region_id, new_regions2)
+            if r:
+                merged_regions.append(r[0])
+
+        # write regions into file
+        fname = os.path.join(os.getcwd(), 'merged_regions.csv')
+        with open(fname, 'w') as f:
+            fwriter = csv.writer(f, delimiter='\t')
+            for row in merged_regions:
+                fwriter.writerow(row)
+
+        return fname
+
+    def _list_outputs(self):
+        outputs = self._outputs().get()
+        outputs["merged_atlas"] = self.merged_atlas
+        outputs["merged_regions"] = self.merged_regions
+        return outputs
 
 
 class RegionsMapperInputSpec(BaseInterfaceInputSpec):
