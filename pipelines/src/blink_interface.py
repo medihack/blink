@@ -48,12 +48,14 @@ class AtlasMerger(BaseInterface):
 
         (new_atlas1, new_regions1, startpos) = self.redefine_regions(atlas1_data, regions1)
         (new_atlas2, new_regions2, x) = self.redefine_regions(atlas2_data, regions2, startpos)
-        merged_atlas = self.merge_atlases(new_atlas1, new_atlas2)
 
-        self.write_atlas(new_atlas1,"newatlas1", atlas1_img)
-        self.write_atlas(new_atlas2,"newatlas2",atlas2_img)
-        self.merged_atlas = self.write_atlas(merged_atlas,"merged_atlas",atlas1_img)
-        self.merged_regions = self.merge_regions(merged_atlas, new_regions1, new_regions2)
+        merged_atlas = self.merge_atlases(new_atlas1, new_atlas2)
+        self.merged_atlas = self.write_atlas(merged_atlas,"merged_atlas.nii.gz",atlas1_img)
+        #self.write_atlas(new_atlas1,"newatlas1", atlas1_img)
+        #self.write_atlas(new_atlas2,"newatlas2",atlas2_img)
+
+        merged_regions = self.merge_regions(merged_atlas, new_regions1, new_regions2)
+        self.merged_regions = self.write_regions(merged_regions, "merged_regions.csv")
 
         return runtime
 
@@ -109,14 +111,14 @@ class AtlasMerger(BaseInterface):
                 r = filter(lambda r: int(r[0]) == region_id, new_regions2)
             if r:
                 merged_regions.append(r[0])
+        return merged_regions
 
-        # write regions into file
-        fname = os.path.join(os.getcwd(), 'merged_regions.csv')
+    def write_regions(self, merged_regions, merged_regions_fname):
+        fname = os.path.join(os.getcwd(), merged_regions_fname)
         with open(fname, 'w') as f:
             fwriter = csv.writer(f, delimiter='\t')
             for row in merged_regions:
                 fwriter.writerow(row)
-
         return fname
 
     def _list_outputs(self):
@@ -133,7 +135,6 @@ class AtlasSplitterInputSpec(BaseInterfaceInputSpec):
 class AtlasSplitterOuputSpec(TraitedSpec):
     masks = File(desc="a mask for each region in the provided atlas")
     mappings = traits.Dict(desc="mapping of region id to mask file")
-
 
 class AtlasSplitter(BaseInterface):
     """
@@ -201,119 +202,6 @@ class AtlasSplitter(BaseInterface):
         self.masks = mappings.values()
 
 
-class RegionsMapperInputSpec(BaseInterfaceInputSpec):
-    regions = traits.Array(exists=True, desc="the region ids to map")
-    definitions = File(exists=True, desc="the definition of the regions in tab-delimited format")
-    atlas = File(desc="an atlas volume for finding the center of a region")
-
-
-class RegionsMapperOutputSpec(TraitedSpec):
-    mapped_regions = traits.Array(desc="the mapped regions")
-
-
-class RegionsMapper(BaseInterface):
-    """
-    Maps given region identifiers to the specified region informations.
-    A definitions file is a CSV file (one region per line) with the following data:
-        id, label, full_name, x, y, z
-    For example a line to map AAL region 68 (left precuneus) would look like this:
-        67, PCUN.L, Precuneus, -7, -56, -48
-    If no coordinates (x, y, z) for this region are provided then those will be
-    automatically calculated by using the center of mass of the region.
-
-    Example
-    -------
-
-    >>> import nipype.interfaces.blink as blink
-    >>> rmap = blink.RegionsMapper()
-    >>> rmap.inputs.regions = [3, 4, 5, 9]
-    >>> rmap.inputs.definitions = 'regions.csv'
-    >>> rmap.inputs.atlas = 'aal.nii'
-    >>> rmap.run()
-    """
-    input_spec = RegionsMapperInputSpec
-    output_spec = RegionsMapperOutputSpec
-
-    def _run_interface(self, runtime):
-        atlas = self.inputs.atlas
-        if atlas:
-            self.atlas_data = self.load_atlas(atlas)
-
-        definitions = self.load_definitions()
-
-        self.mapped_regions = self.map_regions(definitions)
-
-        return runtime
-
-    def _list_outputs(self):
-        outputs = self._outputs().get()
-        outputs["mapped_regions"] = self.mapped_regions
-        return outputs
-
-    def load_atlas(self, atlas_fname):
-        atlas_img = nb.load(atlas_fname)
-        atlas_data = atlas_img.get_data()
-        return atlas_data
-
-    def load_definitions(self):
-        definitions = dict()
-        def_fname = self.inputs.definitions
-        with open(def_fname, "rb") as def_file:
-            reader = csv.reader(def_file, delimiter="\t")
-            for row in reader:
-                region_id = row[0]
-
-                try:
-                    x = int(row[3])
-                    y = int(row[4])
-                    z = int(row[5])
-                    coords = (x, y, z)
-                except IndexError:
-                    coords = self.calc_center_of_region(region_id)
-
-                d = dict(
-                    label=row[1],
-                    full_name=row[2],
-                    x=coords[0],
-                    y=coords[1],
-                    z=coords[2],
-                )
-
-                definitions[region_id] = d
-
-        return definitions
-
-    def calc_center_of_region(self, region_id):
-        # clone atlas data
-        atlas_data = np.copy(self.atlas_data)
-
-        # mask region id
-        atlas_data[atlas_data != region_id] = 0
-        atlas_data[atlas_data != 0] = 1
-
-        # calculate center of mass
-        center = ndimage.measurements.center_of_mass(atlas_data)
-        x = int(np.round(center[0]))
-        y = int(np.round(center[1]))
-        z = int(np.round(center[2]))
-
-        return (x, y, z)
-
-    def map_regions(self, definitions):
-        mapped_regions = []
-        regions = self.inputs.regions
-
-        for region_id in regions:
-            d = definitions[str(region_id)]
-
-            if not d:
-                raise Exception("Missing definition for region id %i." % region_id)
-
-            mapped_regions.append(d)
-
-        return mapped_regions
-
-
 class FunctionalConnectivityInputSpec(BaseInterfaceInputSpec):
     fmri = File(
         exists=True,
@@ -324,6 +212,10 @@ class FunctionalConnectivityInputSpec(BaseInterfaceInputSpec):
         exists=True,
         desc='an atlas that defines the regions',
         mandatory=True
+    )
+    defined_regions = File(
+        exists=True,
+        desc="a text file that defines the regions in the atlas",
     )
     absolute = traits.Bool(
         usedefault=True,
@@ -338,20 +230,16 @@ class FunctionalConnectivityInputSpec(BaseInterfaceInputSpec):
 
 
 class FunctionalConnectivityOutputSpec(TraitedSpec):
-    matrix = traits.Array(
-        shape=(None, None),
+    matrix = File(
         desc="the connectivity matrix (calculated using the pearson correlation)"
     )
-    p_values = traits.Array(
-        shape=(None, None),
-        desc="a p-value for each the connectivity matrix element"
+    p_values = File(
+        desc="the matrix of p-values for the pearson correlated connectivity matrix"
     )
-    normalized_matrix = traits.Array(
-        shape=(None, None),
+    normalized_matrix = File(
         desc="the normalized connectivity matrix (Fisher Z transformed)"
     )
-    regions = traits.Array(
-        shape=(None,),
+    mapped_regions = File(
         desc="the regions represented in the matrix (as defined in the atlas)"
     )
 
@@ -361,6 +249,13 @@ class FunctionalConnectivity(BaseInterface):
     Creates a (functional) connectivity matrix from a fMRI volume using an atlas volume (for defining regions).
     The fMRI volume and the atlas must have the same resolution.
     Each distinct value (!= 0) in the atlas volume is treated as region (0 is air).
+    Also maps provided region definitions to the connectivity matrix.
+    A definitions file is a CSV file (one region per line) with the following data (\t is tab):
+        id\tlabel\tfull_name\tx\ty\tz
+    For example a line to map AAL region 68 (left precuneus) would look like this:
+        67, PCUN.L, Precuneus, -7, -56, -48
+    If no coordinates (x, y, z) for this region are provided then those will be
+    automatically calculated by using the center of mass of the region.
 
     Example
     -------
@@ -382,12 +277,25 @@ class FunctionalConnectivity(BaseInterface):
         atlas_fname = self.inputs.atlas
         atlas_img = nb.load(atlas_fname)
         atlas_data = atlas_img.get_data()
+        self.atlas_data = atlas_data
+
+        defined_regions_fname = self.inputs.defined_regions
+        defined_regions = self.parse_defined_regions(defined_regions_fname)
 
         results = self.gen_fconn(fmri_data, atlas_data)
-        self.matrix = results["matrix"]
-        self.p_values = results["p_values"]
-        self.normalized_matrix = results["normalized_matrix"]
-        self.regions = results["regions"]
+
+        matrix = results["matrix"]
+        self.matrix = self.write_matrix(matrix, "matrix.txt")
+
+        p_values = results["p_values"]
+        self.p_values = self.write_matrix(p_values, "p_values.txt")
+
+        normalized_matrix = results["normalized_matrix"]
+        self.normalized_matrix = self.write_matrix(normalized_matrix, "normalized_matrix.txt")
+
+        region_ids = results["region_ids"]
+        mapped_regions = self.map_regions(defined_regions, region_ids)
+        self.mapped_regions = self.write_mapped_regions(mapped_regions)
 
         return runtime
 
@@ -396,8 +304,54 @@ class FunctionalConnectivity(BaseInterface):
         outputs["matrix"] = self.matrix
         outputs["p_values"] = self.p_values
         outputs["normalized_matrix"] = self.normalized_matrix
-        outputs["regions"] = self.regions
+        outputs["mapped_regions"] = self.mapped_regions
         return outputs
+
+    def calc_center_of_region(self, region_id):
+        # clone atlas data
+        atlas_data = np.copy(self.atlas_data)
+
+        # mask region id
+        atlas_data[atlas_data != region_id] = 0
+        atlas_data[atlas_data != 0] = 1
+
+        # calculate center of mass
+        center = ndimage.measurements.center_of_mass(atlas_data)
+        x = int(np.round(center[0]))
+        y = int(np.round(center[1]))
+        z = int(np.round(center[2]))
+
+        return (x, y, z)
+
+    def parse_defined_regions(self, fname):
+        regions = dict()
+
+        with open(fname) as f:
+            reader = csv.reader(f, delimiter="\t")
+            for row in reader:
+                region_id = int(row[0].strip())
+
+                try:
+                    x = int(row[3].strip())
+                    y = int(row[4].strip())
+                    z = int(row[5].strip())
+                    coords = (x, y, z)
+                except IndexError:
+                    coords = self.calc_center_of_region(region_id)
+
+                region = (
+                    row[1].strip(),  # label
+                    row[2].strip(),  # full_name
+                    coords[0],  # x
+                    coords[1],  # y
+                    coords[2],  # z
+                )
+
+                if region_id in regions:
+                    raise Exception("Duplicate region id in region definitions file: %i" % region_id)
+                regions[region_id] = region
+
+        return regions
 
     def gen_fconn(self, fmri_data, atlas_data):
         # some validation checkings
@@ -475,5 +429,34 @@ class FunctionalConnectivity(BaseInterface):
             "matrix": mat,
             "p_values": pv,
             "normalized_matrix": zmat,
-            "regions": regions
+            "region_ids": regions
         }
+
+    def write_matrix(self, matrix, fname):
+        fname = os.path.join(os.getcwd(), fname)
+        with open(fname, "w") as f:
+            for row in matrix:
+                row = map(str, row)
+                line = " ".join(row)
+                f.write(line + "\n")
+        return fname
+
+    def map_regions(self, defined_regions, region_ids):
+        mapped_regions = list()
+
+        for region_id in region_ids:
+            region_id = int(region_id)
+            region = defined_regions[region_id]
+            if not region:
+                raise Exception("Missing definition for region id: %i" % region_id)
+            mapped_regions.append(region)
+
+        return mapped_regions
+
+    def write_mapped_regions(self, mapped_regions):
+        fname = os.path.join(os.getcwd(), "mapped_regions.txt")
+        with open(fname, 'w') as f:
+            writer = csv.writer(f, delimiter="\t")
+            for region in mapped_regions:
+                writer.writerow(region)
+        return fname
