@@ -2,7 +2,7 @@
 
 import os
 import utils
-from nipype.pipeline.engine import Node, Workflow
+from nipype.pipeline.engine import Node, MapNode, Workflow
 from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.fsl.dti import DTIFit, ProbTrackX
 from nipype.interfaces.fsl.preprocess import ApplyWarp
@@ -15,10 +15,12 @@ from blink_interface import AtlasSplitter
 # options
 ###
 options = dict(
-    workflow_plugin="MultiProc",
+    workflow_plugin="SGE",
     number_of_processors=2,
-    sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
-    save_graph=False
+    #sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
+    sub_args="-q long.q",
+    save_graph=False,
+    debug=True
 )
 
 ###
@@ -68,21 +70,22 @@ warp.inputs.interp = "nn"
 
 splitter = Node(AtlasSplitter(), name="splitter")
 
-def select_mask(masks, mappings):
-    print masks
-    print "---"
-    print mappings
-    return "blub"
+def calc_conn(seeds_to_target):
+    print seeds_to_target
+    return None
 
-select = Node(Function(input_names=["masks", "mappings"],
-                       output_names="mask",
-                       function=select_mask),
-              name="select")
+calcconn = Node(Function(input_names="targets",
+                         output_names="matrix",
+                         function=calc_conn),
+                name="calcconn")
 
-probtrackx = Node(ProbTrackX(), name='probtrackx')
-probtrackx.inputs.mode = 'seedmask'
+probtrackx = MapNode(ProbTrackX(), name='probtrackx', iterfield=["seed"])
 probtrackx.inputs.os2t = True
-probtrackx.inputs.loop_check = True
+#probtrackx.inputs.network = True
+#probtrackx.inputs.mode = 'twomask_symm'
+
+if options["debug"]:
+    probtrackx.inputs.n_samples = 10  # default is 5000
 
 # debug node that is normally not used
 def debug(input):
@@ -116,8 +119,18 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # split atlas
                   (warp, splitter, [("out_file", "atlas")]),
-                  (splitter, select, [("masks", "masks")]),
-                  (splitter, select, [("mappings", "mappings")]),
+
+                  # probtrackx
+                  (datasource, probtrackx, [("mask", "mask")]),
+                  (splitter, probtrackx, [("masks", "seed")]),
+                  (splitter, probtrackx, [("masks", "target_masks")]),
+                  (bedpostx, probtrackx, [("outputnode.thsamples", "thsamples"),
+                                          ("outputnode.phsamples", "phsamples"),
+                                          ("outputnode.fsamples", "fsamples")
+                                          ]),
+
+                  # calculate connectivity matrix
+                  (probtrackx, calcconn, [("targets", "targets")])
                   ])
 
 if options["save_graph"]:
