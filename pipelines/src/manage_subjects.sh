@@ -42,6 +42,7 @@ if $unpack; then
             unzip -n "$file" '*/MNINonLinear/T1w_restore_brain.nii.gz'
             unzip -n "$file" '*/MNINonLinear/brainmask_fs.nii.gz'
             unzip -n "$file" '*/MNINonLinear/xfms/standard2acpc_dc.nii.gz'
+            unzip -n "$file" '*/MNINonLinear/aparc+aseg.nii.gz'
         fi
 
         if [[ ${file} =~ "_3T_rfMRI_REST1_preproc" ]]; then

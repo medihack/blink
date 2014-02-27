@@ -11,7 +11,7 @@ from nipype.interfaces.fsl.preprocess import FAST, ApplyXfm
 from nipype.interfaces.fsl.model import GLM
 from nipype.interfaces.utility import Function
 from nipype.algorithms.misc import Gunzip
-from blink_interface import FunctionalConnectivity, RegionsMapper
+from blink_interface import FunctionalConnectivity, AtlasMerger
 
 ###
 # options
@@ -54,7 +54,8 @@ infosource.iterables = ("subject_id", subjects)
 templates = dict(
     func="{subject_id}/MNINonLinear/Results/rfMRI_REST1_LR/rfMRI_REST1_LR.nii.gz",
     struct="{subject_id}/MNINonLinear/T1w_restore_brain.nii.gz",
-    brain_mask="{subject_id}/MNINonLinear/brainmask_fs.nii.gz"
+    brain_mask="{subject_id}/MNINonLinear/brainmask_fs.nii.gz",
+    aparc_aseg="{subject_id}/MNINonLinear/aparc+aseg.nii.gz"
 )
 datasource = Node(SelectFiles(templates), name="datasource")
 datasource.inputs.base_directory = os.path.join(basedir, "subjects")
@@ -113,33 +114,56 @@ smooth.inputs.fwhm = 5.0
 
 unzip = Node(Gunzip(), name="unzip")
 
+merger = Node(AtlasMerger(), name="merger")
+merger.inputs.atlas2 = os.path.join(basedir, "data", "cerebellum-MNIflirt.nii.gz")
+merger.inputs.regions1 = os.path.join(basedir, "data", "aparc+aseg_regions_without_coords.txt")
+merger.inputs.regions2 = os.path.join(basedir, "data", "cerebellum-MNIflirt_regions_without_coords.nii.txt")
+
+sampleatlas = Node(ApplyXfm(apply_xfm=True), name="sampleatlas")
+sampleatlas.inputs.in_matrix_file = os.path.join(basedir, "data", "ident.mat")
+sampleatlas.inputs.interp = "nearestneighbour"
+
 conn = Node(FunctionalConnectivity(), name="conn")
-conn.inputs.atlas = os.path.join(basedir, "data", "aal2mni_2mm.nii.gz")
 
-mapper = Node(RegionsMapper(), name="mapper")
-mapper.inputs.definitions = os.path.join(basedir, "data", "aal_regions_with_coords.txt")
-mapper.inputs.atlas = os.path.join(basedir, "data", "aal2mni_2mm.nii.gz")
-
-def export_conn(normalized_matrix, regions):
+def rewrite_matrix_tojson(in_matrix):
+    from nipype.utils.filemanip import split_filename
     import os
     import json
 
-    assert len(normalized_matrix.shape) == 2
-    nm_fname = os.path.join(os.getcwd(), "normalized_matrix.json")
-    with open(nm_fname, "w") as f:
-        json.dump(normalized_matrix.tolist(), f)
+    out_matrix = list()
+    with open(in_matrix) as f:
+        for row in f:
+            row = row.strip()
+            if row:
+                row = row.split(' ')
+                out_matrix.append(row)
 
-    assert len(regions.shape) == 1
-    r_fname = os.path.join(os.getcwd(), "regions.json")
-    with open(r_fname, "w") as f:
-        json.dump(regions.tolist(), f)
+    fname = split_filename(in_matrix)[1] + ".json"
+    fname = os.path.join(os.getcwd(), fname)
+    with open(fname, "w") as f:
+        json.dump(out_matrix, f)
 
-    return (nm_fname, r_fname)
+    return fname
 
-exportconn = Node(Function(input_names=["normalized_matrix", "regions"],
-                           output_names=["normalized_matrix", "regions"],
-                           function=export_conn),
-                  name="export_conn")
+def rewrite_regions_tojson(in_regions):
+    from nipype.utils.filemanip import split_filename
+    import os
+    import json
+
+    out_regions = list()
+    with open(in_regions) as f:
+        for row in f:
+            row = row.strip()
+            if row:
+                row = row.split("\t")
+                out_regions.append(row)
+
+    fname = split_filename(in_regions)[1] + ".json"
+    fname = os.path.join(os.getcwd(), fname)
+    with open(fname, "w") as f:
+        json.dump(out_regions, f)
+
+    return fname
 
 def create_network_properties(subject_id, subjects_data):
     import os
@@ -161,7 +185,7 @@ def create_network_properties(subject_id, subjects_data):
         title=subject_id + " (rfMRI_REST1_LR)",
         project="HCP Connectivity Evaluation",
         modality="fmri",
-        atlas="Automated Anatomical Labeling (AAL)",
+        atlas="Desikan atlas from FSL and Cerebellum from SUIT (aparc_aseg_crbl)",
         subject_type="single",
         gender=subj_data["gender"],
         age=subj_data["age"],
@@ -225,23 +249,27 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   # unzip nifti file
                   (smooth, unzip, [("smoothed_file", "in_file")]),
 
-                  # calculate connectivity data
+                  # merge atlas aparc+aseg and cerebellum
+                  (datasource, merger, [("aparc_aseg", "atlas1")]),
+
+                  # resample atlas to voxel size of functional data
+                  (merger, sampleatlas, [("merged_atlas", "in_file")]),
+                  (datasource, sampleatlas, [("func", "reference")]),
+
+                  # input resampled atlas into calculation of connectivity data
+                  (sampleatlas, conn, [("out_file", "atlas")]),
+
+                  # calculate connectivity
                   (unzip, conn, [("out_file", "fmri")]),
-
-                  # map region ids to label, full_name, x, y, z
-                  (conn, mapper, [("regions", "regions")]),
-
-                  # jsonify connectivity data
-                  (conn, exportconn, [("normalized_matrix", "normalized_matrix")]),
-                  (mapper, exportconn, [("mapped_regions", "regions")]),
+                  (merger, conn, [("merged_regions", "defined_regions")]),
 
                   # write network properties
                   (infosource, networkprops, [("subject_id", "subject_id")]),
 
                   # save results
                   (infosource, datasink, [("subject_id", "container")]),
-                  (exportconn, datasink, [("normalized_matrix", "rfMRI_Rest1_LR.@m")]),
-                  (exportconn, datasink, [("regions", "rfMRI_Rest1_LR.@r")]),
+                  (conn, datasink, [(("normalized_matrix", rewrite_matrix_tojson), "rfMRI_Rest1_LR.@m")]),
+                  (conn, datasink, [(("mapped_regions", rewrite_regions_tojson), "rfMRI_Rest1_LR.@r")]),
                   (networkprops, datasink, [("network_properties", "rfMRI_Rest1_LR.@p")]),
                   ])
 

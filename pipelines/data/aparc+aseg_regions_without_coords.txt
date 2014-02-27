@@ -1,0 +1,90 @@
+10	THA.L	Thalamus, left
+11	CAU.L	Caudate nucleus, left
+12	PUT.L	Lenticular nucleus, putamen, left
+13	PAL.R	Lenticular nucleus, pallidum, right
+16	BS	Brainstem
+17	HIP.L	Hippocampus, left
+18	AMYG.L	Amygdala, left
+26	ACC.L	Nucleus accumbens, left
+28	VDC.L	Left Ventral
+49	THA.R	Right Thalamus
+50	CAU.R	Caudate nucleus, right
+51	PUT.R	Lenticular nucleus, putamen, right
+52	PAL.R	Lenticular nucleus, pallidum, right
+53	HIP.R	Hippocampus, right
+54	AMYG.R	Amygdala, right
+58	ACC.L	Nucleus accumbens, right
+60	VDC.R	Diencephalon ventral, right
+251	CCP	Corpus callosum, posterior
+252	CCMP	Corpus callosum, midposterior
+253	CCC	Corpus callosum, central
+254	CCMA	Corpus callosum, midanterior
+255	CCA	Corpus callosum, anterior
+1001	BSTS.L	Superior temporal sulcus, banks, left
+1002	CAC.L	ctx-lh-caudalanteriorcingulate
+1003	CMF.L	ctx-lh-caudalmiddlefrontal
+1005	CUN.L	ctx-lh-cuneus
+1006	ERH.L	ctx-lh-entorhinal
+1007	FFG.L	ctx-lh-fusiform
+1008	IPG.L	ctx-lh-inferiorparietal
+1009	ITG.L	ctx-lh-inferiortemporal
+1010	ICING.L	ctx-lh-isthmuscingulate
+1011	LOG.L	ctx-lh-lateraloccipital
+1012	LOFG.L	ctx-lh-lateralorbitofrontal
+1013	LING.L	ctx-lh-lingual
+1014	MOFG.L	ctx-lh-medialorbitofrontal
+1015	MTG.L	ctx-lh-middletemporal
+1016	PHIPG.L	ctx-lh-parahippocampal
+1017	PCENG.L	ctx-lh-paracentral
+1018	OPERG.L	ctx-lh-parsopercularis
+1019	ORBG.L	ctx-lh-parsorbitalis
+1020	TRIAG.L	ctx-lh-parstriangularis
+1021	PCALG.L	ctx-lh-pericalcarine
+1022	PoCG.L	ctx-lh-postcentral
+1023	PCG.L	ctx-lh-posteriorcingulate
+1024	PreCG.L	ctx-lh-precentral
+1025	PCUN.L	ctx-lh-precuneus
+1026	ACG.L	ctx-lh-rostralanteriorcingulate
+1027	MFG.L	ctx-lh-rostralmiddlefrontal
+1028	SFG.L	ctx-lh-superiorfrontal
+1029	SPG.L	ctx-lh-superiorparietal
+1030	STG.L	ctx-lh-superiortemporal
+1031	SMG.L	ctx-lh-supramarginal
+1032	FPole.L	ctx-lh-frontalpole
+1033	TPole.L	ctx-lh-temporalpole
+1034	TTG.L	ctx-lh-transversetemporal
+1035	INS.L	ctx-lh-insula
+2001	BSTS.R	ctx-rh-bankssts
+2002	CAC.R	ctx-rh-caudalanteriorcingulate
+2003	CMF.R	ctx-rh-caudalmiddlefrontal
+2005	CUN.R	ctx-rh-cuneus
+2006	ERH.R	ctx-rh-entorhinal
+2007	FFG.R	ctx-rh-fusiform
+2008	IPG.R	ctx-rh-inferiorparietal
+2009	ITG.R	ctx-rh-inferiortemporal
+2010	ICING.R	ctx-rh-isthmuscingulate
+2011	LOG.R	ctx-rh-lateraloccipital
+2012	LOFG.R	ctx-rh-lateralorbitofrontal
+2013	LING.R	ctx-rh-lingual
+2014	MOFG.R	ctx-rh-medialorbitofrontal
+2015	MTG.R	ctx-rh-middletemporal
+2016	PHIPG.R	ctx-rh-parahippocampal
+2017	PCENG.R	ctx-rh-paracentral
+2018	OPERG.R	ctx-rh-parsopercularis
+2019	ORBG.R	ctx-rh-parsorbitalis
+2020	TRIAG.R	ctx-rh-parstriangularis
+2021	PCALG.R	ctx-rh-pericalcarine
+2022	PoCG.R	ctx-rh-postcentral
+2023	PCG.R	ctx-rh-posteriorcingulate
+2024	PreCG.R	ctx-rh-precentral
+2025	PCUN.R	ctx-rh-precuneus
+2026	ACG.R	ctx-rh-rostralanteriorcingulate
+2027	MFG.R	ctx-rh-rostralmiddlefrontal
+2028	SFG.R	ctx-rh-superiorfrontal
+2029	SPG.R	ctx-rh-superiorparietal
+2030	STG.R	ctx-rh-superiortemporal
+2031	SMG.R	ctx-rh-supramarginal
+2032	FPole.R	ctx-rh-frontalpole
+2033	TPole.R	ctx-rh-temporalpole
+2034	TTG.R	ctx-rh-transversetemporal
+2035	INS.R	ctx-rh-insula
