@@ -7,16 +7,16 @@ from nipype.interfaces.utility import IdentityInterface
 from nipype.interfaces.fsl.dti import DTIFit, ProbTrackX
 from nipype.interfaces.fsl.preprocess import ApplyWarp
 from nipype.workflows.dmri.fsl.dti import create_bedpostx_pipeline
-from nipype.interfaces.io import SelectFiles
+from nipype.interfaces.io import SelectFiles, DataSink
 from nipype.interfaces.utility import Function
-from blink_interface import AtlasSplitter
+from blink_interface import AtlasSplitter, StructuralConnectivity
 
 ###
 # options
 ###
 options = dict(
-    workflow_plugin="SGE",
-    number_of_processors=2,
+    workflow_plugin="MultiProc",
+    number_of_processors=10,
     #sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
     sub_args="-q long.q",
     save_graph=False,
@@ -70,33 +70,23 @@ warp.inputs.interp = "nn"
 
 splitter = Node(AtlasSplitter(), name="splitter")
 
-def calc_conn(seeds_to_target):
-    print seeds_to_target
-    return None
-
-calcconn = Node(Function(input_names="targets",
-                         output_names="matrix",
-                         function=calc_conn),
-                name="calcconn")
-
 probtrackx = MapNode(ProbTrackX(), name='probtrackx', iterfield=["seed"])
 probtrackx.inputs.os2t = True
-#probtrackx.inputs.network = True
-#probtrackx.inputs.mode = 'twomask_symm'
 
 if options["debug"]:
     probtrackx.inputs.n_samples = 10  # default is 5000
 
-# debug node that is normally not used
-def debug(input):
-    print type(input)
-    print input
-    return None
+conn = Node(StructuralConnectivity(), name='conn')
+def_regions = "aparc+aseg_regions_without_coords.txt"
+conn.inputs.defined_regions = os.path.join(basedir, "data", def_regions)
 
-debug = Node(Function(input_names=["input"],
-                      output_names=[],
-                      function=debug),
-             name="debug")
+datasink = Node(DataSink(), name="sinker")
+datasink.inputs.base_directory = basedir + "/outputs"
+datasink.inputs.parameterization = False
+#datasink.inputs.substitutions = [
+    #("network_properties", "network"),
+    #("normalized_matrix", "matrix"),
+#]
 
 workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
@@ -130,7 +120,13 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                                           ]),
 
                   # calculate connectivity matrix
-                  (probtrackx, calcconn, [("targets", "targets")])
+                  (probtrackx, conn, [("targets", "targets")]),
+                  (probtrackx, conn, [("log", "logs")]),
+
+                  # save results
+                  (infosource, datasink, [("subject_id", "container")]),
+                  (conn, datasink, [("matrix", "Diffusion.@m")]),
+                  (conn, datasink, [("mapped_regions","Diffusion.@r")]),
                   ])
 
 if options["save_graph"]:

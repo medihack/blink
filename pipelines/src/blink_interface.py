@@ -6,6 +6,8 @@ import scipy.stats as stats
 from scipy import ndimage
 import csv
 import os
+import re
+from collections import OrderedDict
 
 class AtlasMergerInputSpec(BaseInterfaceInputSpec):
     atlas1 = File(exists=True, desc="1st input atlas")
@@ -285,7 +287,7 @@ class FunctionalConnectivity(BaseInterface):
         defined_regions_fname = self.inputs.defined_regions
         defined_regions = self.parse_defined_regions(defined_regions_fname)
 
-        results = self.gen_fconn(fmri_data, atlas_data)
+        results = self.gen_fconn(defined_regions, fmri_data, atlas_data)
 
         matrix = results["matrix"]
         self.matrix = self.write_matrix(matrix, "matrix.txt")
@@ -296,9 +298,7 @@ class FunctionalConnectivity(BaseInterface):
         normalized_matrix = results["normalized_matrix"]
         self.normalized_matrix = self.write_matrix(normalized_matrix, "normalized_matrix.txt")
 
-        region_ids = results["region_ids"]
-        mapped_regions = self.map_regions(defined_regions, region_ids)
-        self.mapped_regions = self.write_mapped_regions(mapped_regions)
+        self.mapped_regions = self.write_mapped_regions(defined_regions)
 
         return runtime
 
@@ -327,7 +327,7 @@ class FunctionalConnectivity(BaseInterface):
         return (x, y, z)
 
     def parse_defined_regions(self, fname):
-        regions = dict()
+        regions = OrderedDict()
 
         with open(fname) as f:
             reader = csv.reader(f, delimiter="\t")
@@ -356,7 +356,7 @@ class FunctionalConnectivity(BaseInterface):
 
         return regions
 
-    def gen_fconn(self, fmri_data, atlas_data):
+    def gen_fconn(self, defined_regions, fmri_data, atlas_data):
         # some validation checkings
         if len(fmri_data.shape) != 4:
             raise Exception("fMRI data must have four dimensions (spatial + temporal)")
@@ -367,22 +367,21 @@ class FunctionalConnectivity(BaseInterface):
         if fmri_data.shape[:3] != atlas_data.shape:
             raise Exception("fMRI and atlas data must have same spatial dimensions")
 
-        # calculate number of unique regions in atlas
-        # (assumes that 0 is air)
-        unique = np.unique(atlas_data.flatten())
-        regions = np.delete(unique, np.where(unique == 0))
-        regions = np.sort(regions)
+        region_ids = defined_regions.keys()
 
-        # calculate mean values for all atlas regions over time
+        # calculate mean values for all atlas region_ids over time
         timepoints = fmri_data.shape[3]
-        means = np.zeros([regions.size, timepoints], "float32")
+        means = np.zeros([region_ids.size, timepoints], "float32")
 
         for i in xrange(timepoints):
             fmri_vol = fmri_data[:, :, :, i]
 
-            for j, val in enumerate(regions):
+            for j, region_id in enumerate(region_ids):
                 mask = np.copy(atlas_data)
-                mask[atlas_data != val] = 0
+                mask[atlas_data != region_id] = 0
+
+                if np.all(mask == 0):
+                    raise Exception("Defined region id (%i) not in atlas." % (region_id))
 
                 masked = np.copy(fmri_vol)
                 masked[mask == 0] = 0
@@ -391,11 +390,11 @@ class FunctionalConnectivity(BaseInterface):
                 means[j, i] = mean
 
         # calculate pearson correlation
-        mat = np.ones([regions.size, regions.size])
-        pv = np.zeros([regions.size, regions.size])
+        mat = np.ones([region_ids.size, region_ids.size])
+        pv = np.zeros([region_ids.size, region_ids.size])
 
-        for i in xrange(regions.size):
-            for j in xrange(regions.size):
+        for i in xrange(region_ids.size):
+            for j in xrange(region_ids.size):
                 x = means[i, :]
                 y = means[j, :]
                 corr = stats.pearsonr(x, y)
@@ -431,8 +430,7 @@ class FunctionalConnectivity(BaseInterface):
         return {
             "matrix": mat,
             "p_values": pv,
-            "normalized_matrix": zmat,
-            "region_ids": regions
+            "normalized_matrix": zmat
         }
 
     def write_matrix(self, matrix, fname):
@@ -444,18 +442,6 @@ class FunctionalConnectivity(BaseInterface):
                 f.write(line + "\n")
         return fname
 
-    def map_regions(self, defined_regions, region_ids):
-        mapped_regions = list()
-
-        for region_id in region_ids:
-            region_id = int(region_id)
-            region = defined_regions[region_id]
-            if not region:
-                raise Exception("Missing definition for region id: %i" % region_id)
-            mapped_regions.append(region)
-
-        return mapped_regions
-
     def write_mapped_regions(self, mapped_regions):
         fname = os.path.join(os.getcwd(), "mapped_regions.txt")
         with open(fname, 'w') as f:
@@ -463,3 +449,101 @@ class FunctionalConnectivity(BaseInterface):
             for region in mapped_regions:
                 writer.writerow(region)
         return fname
+
+
+class StructuralConnectivityInputSpec(BaseInterfaceInputSpec):
+    targets = traits.List(
+        exists=True,
+        desc="seeds to target output from probtrackx",
+        mandatory=True
+    )
+    logs = traits.List(File(exists=True),
+        exists=True,
+        desc="logs from probtrackx",
+        mandatory=True
+    )
+    defined_regions = File(
+        exists=True,
+        desc="a text file that defines the regions in the atlas",
+    )
+
+class StructuralConnectivityOutputSpec(TraitedSpec):
+    matrix = File(
+        desc="the connectivity matrix (calculated using the pearson correlation)"
+    )
+    ways = File(
+        desc="the matrix of p-values for the pearson correlated connectivity matrix"
+    )
+    mapped_regions = File(
+        desc="the regions represented in the matrix (as defined in the atlas)"
+    )
+
+class StructuralConnectivity(BaseInterface):
+    """
+    Creates a structural connectvity matrix from the results of probtrackx.
+    Also maps provided region definitions to the connectivity matrix
+    (see FunctionalConnectivity class).
+    """
+    input_spec = StructuralConnectivityInputSpec
+    output_spec = StructuralConnectivityOutputSpec
+
+    def _run_interface(self, runtime):
+        targets = self.inputs.targets
+        logs = self.inputs.logs
+        #defined_regions = self.inputs.defined_regions
+
+        seed_ids = self.parse_seed_ids(logs)
+        self.gen_sconn(seed_ids, targets)
+
+        print "ok!!!!!!!!!!!!!!!!!!!"
+
+        return runtime
+
+    def _list_outputs(self):
+        outputs = self._outputs().get()
+        outputs["matrix"] = None
+        outputs["ways"] = None
+        outputs["mapped_regions"] = None
+        return outputs
+
+    def parse_seed_ids(self, logs):
+        seed_ids = list()
+        for log in logs:
+            with open(log) as f:
+                l = f.readline()
+                r = r'.*--seed\S+region_mask_(\d+)\.nii.*'
+                m = re.match(r, l)
+                seed_id = m.group(1)
+                assert seed_id
+                seed_ids.append(seed_id)
+        return seed_ids
+
+    def gen_sconn(self, seed_ids, targets):
+        assert len(seed_ids) == len(targets)
+        mat = np.zeros([len(seed_ids), len(seed_ids)])
+        d = dict()
+
+        for idx, seed_id in enumerate(seed_ids):
+            seed_targets = targets[idx]
+            for seed_target in seed_targets:
+                r = r'.*seeds_to_region_mask_(\d+)\.nii.*'
+                m = re.match(r, seed_target)
+                target_id = m.group(1)
+                assert target_id
+
+                (size, ways) = self.calc_target(seed_target)
+
+                ds = d.get(seed_id, dict())
+                dt = ds.get(target_id, dict())
+                dt = {'size': size, 'ways': ways}
+                ds[target_id] = dt
+                d[seed_id] = ds
+
+        print d
+
+    def calc_target(self, seed_target):
+        target_img = nb.load(seed_target)
+        target_data = target_img.get_data()
+        size = target_data[target_data!=0]
+        ways = np.sum(target_data)
+        return (size, ways)
