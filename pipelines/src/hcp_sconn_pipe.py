@@ -81,13 +81,55 @@ conn = Node(StructuralConnectivity(), name='conn')
 conn.inputs.defined_regions = os.path.join(
     basedir, "data", "aal_regions_without_coords.txt")
 
+# Create BLINK network properties for HCP data
+def create_network_properties(subject_id, subjects_data):
+    import os
+    import json
+
+    # TODO correct preproc
+    preproc = ("CSF, WM regressed; highpass filtering (sigma 1389); "
+               "smoothing (FWHM 5mm); pearson correlation; Fisher Z tranformation; "
+               "see https://github.com/medihack/blink for full Nipype pipeline")
+
+    notes = ("Data were provided by the Human Connectome Project, WU-Minn Consortium "
+             "(Principal Investigators: David Van Essen and Kamil Ugurbil; 1U54MH091657) "
+             "funded by the 16 NIH Institutes and Centers that support the NIH Blueprint "
+             "for Neuroscience Research; and by the McDonnell Center for Systems "
+             "Neuroscience at Washington University.")
+
+    subj_data = subjects_data[subject_id]
+
+    props = dict(
+        title=subject_id + " (rfMRI_REST1_LR)",
+        project="HCP Connectivity Evaluation",
+        modality="dwi",
+        atlas="Desikan atlas from FSL and Cerebellum from SUIT (aparc_aseg_crbl)",
+        subject_type="single",
+        gender=subj_data["gender"],
+        age=subj_data["age"],
+        preprocessing=preproc,
+        notes=notes
+    )
+
+    props_fname = os.path.join(os.getcwd(), "network_properties.json")
+    with open(props_fname, "w") as f:
+        json.dump(props, f)
+
+    return props_fname
+
+networkprops = Node(Function(input_names=["subject_id", "subjects_data"],
+                             output_names=["network_properties"],
+                             function=create_network_properties),
+                    name="network_props")
+networkprops.inputs.subjects_data = subjects_data
+
 datasink = Node(DataSink(), name="sinker")
 datasink.inputs.base_directory = basedir + "/outputs"
 datasink.inputs.parameterization = False
-#datasink.inputs.substitutions = [
-    #("network_properties", "network"),
-    #("normalized_matrix", "matrix"),
-#]
+datasink.inputs.substitutions = [
+    ("network_properties", "network"),
+    ("normalized_matrix", "matrix"),
+]
 
 workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
@@ -125,10 +167,14 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (probtrackx, conn, [("targets", "targets")]),
                   (probtrackx, conn, [("log", "logs")]),
 
+                  # write network properties
+                  (infosource, networkprops, [("subject_id", "subject_id")]),
+
                   # save results
                   (infosource, datasink, [("subject_id", "container")]),
-                  (conn, datasink, [("normalized_matrix", "Diffusion.@m")]),
-                  (conn, datasink, [("mapped_regions","Diffusion.@r")]),
+                  (conn, datasink, [(("normalized_matrix", utils.rewrite_matrix_tojson), "Diffusion.@m")]),
+                  (conn, datasink, [(("mapped_regions", utils.rewrite_regions_tojson),"Diffusion.@r")]),
+                  (networkprops, datasink, [("network_properties", "Diffusion.@p")]),
                   ])
 
 if options["save_graph"]:

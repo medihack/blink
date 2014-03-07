@@ -79,3 +79,53 @@ def parse_subject_data(subjects_data_fname):
             subjects_data[subject_id] = subj_data
 
     return subjects_data
+
+
+###
+# Rewrite a matrix text file (space separated columns, new line
+# separated rows) to a json file.
+###
+def rewrite_matrix_tojson(in_matrix):
+    from nipype.utils.filemanip import split_filename
+    import os
+    import json
+
+    out_matrix = list()
+    with open(in_matrix) as f:
+        for row in f:
+            row = row.strip()
+            if row:
+                row = row.split(' ')
+                out_matrix.append(row)
+
+    fname = split_filename(in_matrix)[1] + ".json"
+    fname = os.path.join(os.getcwd(), fname)
+    with open(fname, "w") as f:
+        json.dump(out_matrix, f)
+
+    return fname
+
+
+###
+# Rewrite a regions text file (tab separated region attributes, new line
+# separated regions) to a json file.
+###
+def rewrite_regions_tojson(in_regions):
+    from nipype.utils.filemanip import split_filename
+    import os
+    import json
+
+    out_regions = list()
+    with open(in_regions) as f:
+        for row in f:
+            row = row.strip()
+            if row:
+                row = row.split("\t")
+                out_regions.append(row)
+
+    fname = split_filename(in_regions)[1] + ".json"
+    fname = os.path.join(os.getcwd(), fname)
+    with open(fname, "w") as f:
+        json.dump(out_regions, f)
+
+    return fname
