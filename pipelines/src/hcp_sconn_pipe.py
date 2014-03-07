@@ -9,7 +9,7 @@ from nipype.interfaces.fsl.preprocess import ApplyWarp
 from nipype.workflows.dmri.fsl.dti import create_bedpostx_pipeline
 from nipype.interfaces.io import SelectFiles, DataSink
 from nipype.interfaces.utility import Function
-from blink_interface import AtlasSplitter, StructuralConnectivity
+from blink_interface import AtlasMerger, AtlasSplitter, StructuralConnectivity
 
 ###
 # options
@@ -20,7 +20,6 @@ options = dict(
     #sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
     sub_args="-q long.q",
     save_graph=False,
-    debug=True,
 
     n_samples=20  # probtrackx number of samples
 )
@@ -54,6 +53,7 @@ infosource = Node(IdentityInterface(fields=["subject_id"]),
 infosource.iterables = ("subject_id", subjects)
 
 templates = dict(
+    aparc_aseg="{subject_id}/MNINonLinear/aparc+aseg.nii.gz",
     dwi="{subject_id}/T1w/Diffusion/data.nii.gz",
     mask="{subject_id}/T1w/Diffusion/nodif_brain_mask.nii.gz",
     bvals="{subject_id}/T1w/Diffusion/bvals",
@@ -62,12 +62,16 @@ templates = dict(
 datasource = Node(SelectFiles(templates), name="datasource")
 datasource.inputs.base_directory = os.path.join(basedir, "subjects")
 
+merger = Node(AtlasMerger(), name="merger")
+merger.inputs.atlas2 = os.path.join(basedir, "data", "cerebellum-MNIflirt.nii.gz")
+merger.inputs.regions1 = os.path.join(basedir, "data", "aparc+aseg_regions_without_coords.txt")
+merger.inputs.regions2 = os.path.join(basedir, "data", "cerebellum-MNIflirt_regions_without_coords.nii.txt")
+
 dtifit = Node(DTIFit(), name="dtifit")
 
 bedpostx = create_bedpostx_pipeline()
 
 warp = Node(ApplyWarp(), name="warp")
-warp.inputs.in_file = os.path.join(basedir, "data", "aal2mni_2mm.nii.gz")
 warp.inputs.interp = "nn"
 
 splitter = Node(AtlasSplitter(), name="splitter")
@@ -77,9 +81,6 @@ probtrackx.inputs.n_samples = options['n_samples']
 probtrackx.inputs.os2t = True
 
 conn = Node(StructuralConnectivity(), name='conn')
-#"aparc+aseg_regions_without_coords.txt"
-conn.inputs.defined_regions = os.path.join(
-    basedir, "data", "aal_regions_without_coords.txt")
 
 # Create BLINK network properties for HCP data
 def create_network_properties(subject_id, subjects_data):
@@ -133,6 +134,14 @@ datasink.inputs.substitutions = [
 
 workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
+                  # merge atlas aparc+aseg and cerebellum
+                  (datasource, merger, [("aparc_aseg", "atlas1")]),
+
+                  # transform merged atlas to dwi space
+                  (merger, warp, [("merged_atlas", "in_file")]),
+                  (datasource, warp, [("dwi", "ref_file")]),
+                  (datasource, warp, [("mask", "mask_file")]),
+
                   # dtifit
                   (datasource, dtifit, [("dwi", "dwi")]),
                   (datasource, dtifit, [("mask", "mask")]),
@@ -145,10 +154,6 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (datasource, bedpostx, [("mask", "inputnode.mask")]),
                   (datasource, bedpostx, [("bvals", "inputnode.bvals")]),
                   (datasource, bedpostx, [("bvecs", "inputnode.bvecs")]),
-
-                  # transform aal to dwi space
-                  (datasource, warp, [("dwi", "ref_file")]),
-                  (datasource, warp, [("mask", "mask_file")]),
 
                   # split atlas
                   (warp, splitter, [("out_file", "atlas")]),
@@ -166,6 +171,7 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                   (warp, conn, [("out_file", "atlas")]),
                   (probtrackx, conn, [("targets", "targets")]),
                   (probtrackx, conn, [("log", "logs")]),
+                  (merger, conn, [("merged_regions", "defined_regions")]),
 
                   # write network properties
                   (infosource, networkprops, [("subject_id", "subject_id")]),
