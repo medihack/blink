@@ -20,7 +20,9 @@ options = dict(
     #sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
     sub_args="-q long.q",
     save_graph=False,
-    debug=True
+    debug=True,
+
+    n_samples=20  # probtrackx number of samples
 )
 
 ###
@@ -71,14 +73,13 @@ warp.inputs.interp = "nn"
 splitter = Node(AtlasSplitter(), name="splitter")
 
 probtrackx = MapNode(ProbTrackX(), name='probtrackx', iterfield=["seed"])
+probtrackx.inputs.n_samples = options['n_samples']
 probtrackx.inputs.os2t = True
 
-if options["debug"]:
-    probtrackx.inputs.n_samples = 10  # default is 5000
-
 conn = Node(StructuralConnectivity(), name='conn')
-def_regions = "aparc+aseg_regions_without_coords.txt"
-conn.inputs.defined_regions = os.path.join(basedir, "data", def_regions)
+#"aparc+aseg_regions_without_coords.txt"
+conn.inputs.defined_regions = os.path.join(
+    basedir, "data", "aal_regions_without_coords.txt")
 
 datasink = Node(DataSink(), name="sinker")
 datasink.inputs.base_directory = basedir + "/outputs"
@@ -120,12 +121,13 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
                                           ]),
 
                   # calculate connectivity matrix
+                  (warp, conn, [("out_file", "atlas")]),
                   (probtrackx, conn, [("targets", "targets")]),
                   (probtrackx, conn, [("log", "logs")]),
 
                   # save results
                   (infosource, datasink, [("subject_id", "container")]),
-                  (conn, datasink, [("matrix", "Diffusion.@m")]),
+                  (conn, datasink, [("normalized_matrix", "Diffusion.@m")]),
                   (conn, datasink, [("mapped_regions","Diffusion.@r")]),
                   ])
 

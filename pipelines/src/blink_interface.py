@@ -9,6 +9,76 @@ import os
 import re
 from collections import OrderedDict
 
+
+def calc_center_of_region(region_id, atlas):
+    # clone atlas data
+    atlas_data = np.copy(atlas)
+
+    # mask region id
+    atlas_data[atlas_data != region_id] = 0
+    atlas_data[atlas_data != 0] = 1
+
+    # calculate center of mass
+    center = ndimage.measurements.center_of_mass(atlas_data)
+    x = int(np.round(center[0]))
+    y = int(np.round(center[1]))
+    z = int(np.round(center[2]))
+
+    return (x, y, z)
+
+
+def parse_defined_regions(fname, atlas=None):
+    regions = OrderedDict()
+
+    with open(fname) as f:
+        reader = csv.reader(f, delimiter="\t")
+        for row in reader:
+            region_id = int(row[0].strip())
+
+            try:
+                x = int(row[3].strip())
+                y = int(row[4].strip())
+                z = int(row[5].strip())
+                coords = (x, y, z)
+            except IndexError:
+                if atlas == None:
+                    raise Exception("No coordinates for region %i, but also no atlas provided to calculate them." % region_id)
+                coords = calc_center_of_region(region_id, atlas)
+
+            region = (
+                row[1].strip(),  # label
+                row[2].strip(),  # full_name
+                coords[0],  # x
+                coords[1],  # y
+                coords[2],  # z
+            )
+
+            if region_id in regions:
+                raise Exception("Duplicate region id in region definitions file: %i" % region_id)
+            regions[region_id] = region
+
+    return regions
+
+
+def write_mapped_regions(mapped_regions):
+    fname = os.path.join(os.getcwd(), "mapped_regions.txt")
+    with open(fname, 'w') as f:
+        writer = csv.writer(f, delimiter="\t")
+        for region_id, region in mapped_regions.iteritems():
+            writer.writerow(region)
+    return fname
+
+
+def write_matrix(matrix, fname):
+    fname = os.path.join(os.getcwd(), fname)
+    with open(fname, "w") as f:
+        for row in matrix:
+            row = map(str, row)
+            line = " ".join(row)
+            f.write(line + "\n")
+    return fname
+
+
 class AtlasMergerInputSpec(BaseInterfaceInputSpec):
     atlas1 = File(exists=True, desc="1st input atlas")
     atlas2 = File(exists=True, desc="2nd input atlas")
@@ -62,9 +132,9 @@ class AtlasMerger(BaseInterface):
         return runtime
 
     def parse_regions(self, fname):
+        regions = list()
         with open(fname) as f:
             freader = csv.reader(f, delimiter='\t')
-            regions = list()
             for row in freader:
                 regions.append(row)
         return regions
@@ -230,7 +300,7 @@ class FunctionalConnectivityInputSpec(BaseInterfaceInputSpec):
     zero_diagonal = traits.Bool(
         usedefault=True,
         default_value=True,
-        desc="zero values on diagonal in correlation and normalized matrix"
+        desc="zero values on diagonal in output matrices"
     )
 
 
@@ -238,11 +308,11 @@ class FunctionalConnectivityOutputSpec(TraitedSpec):
     matrix = File(
         desc="the connectivity matrix (calculated using the pearson correlation)"
     )
-    p_values = File(
-        desc="the matrix of p-values for the pearson correlated connectivity matrix"
-    )
     normalized_matrix = File(
         desc="the normalized connectivity matrix (Fisher Z transformed)"
+    )
+    p_values = File(
+        desc="the matrix of p-values for the pearson correlated connectivity matrix"
     )
     mapped_regions = File(
         desc="the regions represented in the matrix (as defined in the atlas)"
@@ -284,21 +354,21 @@ class FunctionalConnectivity(BaseInterface):
         atlas_data = atlas_img.get_data()
         self.atlas_data = atlas_data
 
-        defined_regions_fname = self.inputs.defined_regions
-        defined_regions = self.parse_defined_regions(defined_regions_fname)
+        defined_regions = parse_defined_regions(
+            self.inputs.defined_regions, atlas_data)
 
         results = self.gen_fconn(defined_regions, fmri_data, atlas_data)
 
-        matrix = results["matrix"]
-        self.matrix = self.write_matrix(matrix, "matrix.txt")
+        matrix = results["corr_matrix"]
+        self.matrix = write_matrix(matrix, "matrix.txt")
 
         p_values = results["p_values"]
-        self.p_values = self.write_matrix(p_values, "p_values.txt")
+        self.p_values = write_matrix(p_values, "p_values.txt")
 
         normalized_matrix = results["normalized_matrix"]
-        self.normalized_matrix = self.write_matrix(normalized_matrix, "normalized_matrix.txt")
+        self.normalized_matrix = write_matrix(normalized_matrix, "normalized_matrix.txt")
 
-        self.mapped_regions = self.write_mapped_regions(defined_regions)
+        self.mapped_regions = write_mapped_regions(defined_regions)
 
         return runtime
 
@@ -309,52 +379,6 @@ class FunctionalConnectivity(BaseInterface):
         outputs["normalized_matrix"] = self.normalized_matrix
         outputs["mapped_regions"] = self.mapped_regions
         return outputs
-
-    def calc_center_of_region(self, region_id):
-        # clone atlas data
-        atlas_data = np.copy(self.atlas_data)
-
-        # mask region id
-        atlas_data[atlas_data != region_id] = 0
-        atlas_data[atlas_data != 0] = 1
-
-        # calculate center of mass
-        center = ndimage.measurements.center_of_mass(atlas_data)
-        x = int(np.round(center[0]))
-        y = int(np.round(center[1]))
-        z = int(np.round(center[2]))
-
-        return (x, y, z)
-
-    def parse_defined_regions(self, fname):
-        regions = OrderedDict()
-
-        with open(fname) as f:
-            reader = csv.reader(f, delimiter="\t")
-            for row in reader:
-                region_id = int(row[0].strip())
-
-                try:
-                    x = int(row[3].strip())
-                    y = int(row[4].strip())
-                    z = int(row[5].strip())
-                    coords = (x, y, z)
-                except IndexError:
-                    coords = self.calc_center_of_region(region_id)
-
-                region = (
-                    row[1].strip(),  # label
-                    row[2].strip(),  # full_name
-                    coords[0],  # x
-                    coords[1],  # y
-                    coords[2],  # z
-                )
-
-                if region_id in regions:
-                    raise Exception("Duplicate region id in region definitions file: %i" % region_id)
-                regions[region_id] = region
-
-        return regions
 
     def gen_fconn(self, defined_regions, fmri_data, atlas_data):
         # some validation checkings
@@ -371,7 +395,7 @@ class FunctionalConnectivity(BaseInterface):
 
         # calculate mean values for all atlas region_ids over time
         timepoints = fmri_data.shape[3]
-        means = np.zeros([region_ids.size, timepoints], "float32")
+        means = np.zeros([len(region_ids), timepoints], "float32")
 
         for i in xrange(timepoints):
             fmri_vol = fmri_data[:, :, :, i]
@@ -390,11 +414,11 @@ class FunctionalConnectivity(BaseInterface):
                 means[j, i] = mean
 
         # calculate pearson correlation
-        mat = np.ones([region_ids.size, region_ids.size])
-        pv = np.zeros([region_ids.size, region_ids.size])
+        mat = np.ones([len(region_ids), len(region_ids)])
+        pv = np.zeros([len(region_ids), len(region_ids)])
 
-        for i in xrange(region_ids.size):
-            for j in xrange(region_ids.size):
+        for i in xrange(len(region_ids)):
+            for j in xrange(len(region_ids)):
                 x = means[i, :]
                 y = means[j, :]
                 corr = stats.pearsonr(x, y)
@@ -428,27 +452,10 @@ class FunctionalConnectivity(BaseInterface):
             np.fill_diagonal(zmat, 0)
 
         return {
-            "matrix": mat,
+            "corr_matrix": mat,
             "p_values": pv,
             "normalized_matrix": zmat
         }
-
-    def write_matrix(self, matrix, fname):
-        fname = os.path.join(os.getcwd(), fname)
-        with open(fname, "w") as f:
-            for row in matrix:
-                row = map(str, row)
-                line = " ".join(row)
-                f.write(line + "\n")
-        return fname
-
-    def write_mapped_regions(self, mapped_regions):
-        fname = os.path.join(os.getcwd(), "mapped_regions.txt")
-        with open(fname, 'w') as f:
-            writer = csv.writer(f, delimiter="\t")
-            for region in mapped_regions:
-                writer.writerow(region)
-        return fname
 
 
 class StructuralConnectivityInputSpec(BaseInterfaceInputSpec):
@@ -465,14 +472,34 @@ class StructuralConnectivityInputSpec(BaseInterfaceInputSpec):
     defined_regions = File(
         exists=True,
         desc="a text file that defines the regions in the atlas",
+        mandatory=True
     )
+    atlas = File(
+        exists=True,
+        desc='an atlas for calculating the regions center',
+        mandatory=False
+    )
+    zero_diagonal = traits.Bool(
+        usedefault=True,
+        default_value=True,
+        desc="zero values on diagonal in output matrices"
+    )
+    # not used currently as we normalize by the waystotal
+    # of a region connected to each self
+    # (this should be the same as voxels_of_region * n_samples)
+    #n_samples = traits.Int(
+        #exists=True,
+        #desc='the number of samples used in probtrackx',
+        #mandatory=True
+    #)
+
 
 class StructuralConnectivityOutputSpec(TraitedSpec):
     matrix = File(
-        desc="the connectivity matrix (calculated using the pearson correlation)"
+        desc="the matrix containing the total number of ways (per two regions)"
     )
-    ways = File(
-        desc="the matrix of p-values for the pearson correlated connectivity matrix"
+    normalized_matrix = File(
+        desc="the normalized connectivity matrix"
     )
     mapped_regions = File(
         desc="the regions represented in the matrix (as defined in the atlas)"
@@ -489,21 +516,33 @@ class StructuralConnectivity(BaseInterface):
 
     def _run_interface(self, runtime):
         targets = self.inputs.targets
-        logs = self.inputs.logs
-        #defined_regions = self.inputs.defined_regions
+        seed_ids = self.parse_seed_ids(self.inputs.logs)
 
-        seed_ids = self.parse_seed_ids(logs)
-        self.gen_sconn(seed_ids, targets)
+        atlas_fname = self.inputs.atlas
+        if atlas_fname:
+            atlas_img = nb.load(atlas_fname)
+            atlas_data = atlas_img.get_data()
 
-        print "ok!!!!!!!!!!!!!!!!!!!"
+        defined_regions = parse_defined_regions(
+            self.inputs.defined_regions, atlas_data)
+
+        results = self.gen_sconn(defined_regions, seed_ids, targets)
+
+        matrix = results["waystotal_matrix"]
+        self.matrix = write_matrix(matrix, "matrix.txt")
+
+        normalized_matrix = results["normalized_matrix"]
+        self.normalized_matrix = write_matrix(normalized_matrix, "normalized_matrix.txt")
+
+        self.mapped_regions = write_mapped_regions(defined_regions)
 
         return runtime
 
     def _list_outputs(self):
         outputs = self._outputs().get()
-        outputs["matrix"] = None
-        outputs["ways"] = None
-        outputs["mapped_regions"] = None
+        outputs["matrix"] = self.matrix
+        outputs["normalized_matrix"] = self.normalized_matrix
+        outputs["mapped_regions"] = self.mapped_regions
         return outputs
 
     def parse_seed_ids(self, logs):
@@ -513,25 +552,33 @@ class StructuralConnectivity(BaseInterface):
                 l = f.readline()
                 r = r'.*--seed\S+region_mask_(\d+)\.nii.*'
                 m = re.match(r, l)
-                seed_id = m.group(1)
+                seed_id = int(m.group(1))
                 assert seed_id
                 seed_ids.append(seed_id)
         return seed_ids
 
-    def gen_sconn(self, seed_ids, targets):
+    def gen_sconn(self, defined_regions, seed_ids, targets):
         assert len(seed_ids) == len(targets)
-        mat = np.zeros([len(seed_ids), len(seed_ids)])
         d = dict()
+        region_ids = defined_regions.keys()
+        ways_mat = np.zeros([len(region_ids), len(region_ids)])
+        norm_mat = np.zeros([len(region_ids), len(region_ids)])
 
         for idx, seed_id in enumerate(seed_ids):
+            if not seed_id in region_ids:
+                continue
+
             seed_targets = targets[idx]
             for seed_target in seed_targets:
                 r = r'.*seeds_to_region_mask_(\d+)\.nii.*'
                 m = re.match(r, seed_target)
-                target_id = m.group(1)
+                target_id = int(m.group(1))
                 assert target_id
 
-                (size, ways) = self.calc_target(seed_target)
+                if not target_id in region_ids:
+                    continue
+
+                (size, ways) = self.analyze_target(seed_target)
 
                 ds = d.get(seed_id, dict())
                 dt = ds.get(target_id, dict())
@@ -539,11 +586,38 @@ class StructuralConnectivity(BaseInterface):
                 ds[target_id] = dt
                 d[seed_id] = ds
 
-        print d
+        # calculate matrices
+        for i in xrange(len(region_ids)):
+            for j in xrange(len(region_ids)):
+                r1 = region_ids[i]
+                r2 = region_ids[j]
 
-    def calc_target(self, seed_target):
+                # waytotals matrix
+                # (seed -> target) + (target -> seed)
+                w1 = d[r1][r2]['ways']
+                w2 = d[r2][r1]['ways']
+                waystotal = w1 + w2
+                ways_mat[i, j] = ways_mat[j, i] = waystotal
+
+                # normalized matrix
+                n1 = d[r1][r1]['ways']
+                n2 = d[r2][r2]['ways']
+                norm = (((w1 / n1) + (w2 / n2)) / 2)
+                norm_mat[i, j] = norm_mat[j, i] = norm
+
+        # postprocess matrices
+        if self.inputs.zero_diagonal:
+            np.fill_diagonal(ways_mat, 0)
+            np.fill_diagonal(norm_mat, 0)
+
+        return {
+            "waystotal_matrix": ways_mat,
+            "normalized_matrix": norm_mat
+        }
+
+    def analyze_target(self, seed_target):
         target_img = nb.load(seed_target)
         target_data = target_img.get_data()
-        size = target_data[target_data!=0]
+        size = len(target_data[target_data!=0])
         ways = np.sum(target_data)
         return (size, ways)
