@@ -17,9 +17,9 @@ from blink_interface import FunctionalConnectivity, AtlasMerger
 # options
 ###
 options = dict(
-    workflow_plugin="Linear",
+    workflow_plugin="MultiProc",
     sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
-    number_of_processors=2,
+    number_of_processors=10,
     save_graph=False
 )
 
@@ -173,17 +173,6 @@ datasink.inputs.substitutions = [
     ("network_properties", "network"),
     ("normalized_matrix", "matrix"),
 ]
-
-# debug node that is normally not used
-def debug(input):
-    print type(input)
-    print input
-    return None
-
-debug = Node(Function(input_names=["input"],
-                      output_names=[],
-                      function=debug),
-             name="debug")
 
 workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
