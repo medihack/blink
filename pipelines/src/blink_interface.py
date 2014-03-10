@@ -262,7 +262,7 @@ class AtlasSplitter(BaseInterface):
         # save masks to disc and create mappings
         mappings = dict()
         for region_id, mask in masks.items():
-            fname = "region_mask_%s.nii.gz" % (region_id)
+            fname = "region_mask_%i.nii.gz" % (int(region_id))
             fname = os.path.join(os.getcwd(), fname)
 
             nb.Nifti1Image(
