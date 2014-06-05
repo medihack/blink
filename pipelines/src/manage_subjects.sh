@@ -50,10 +50,11 @@ if $unpack; then
         fi
 
         if [[ ${file} =~ "_3T_Diffusion_preproc" ]]; then
-            unzip -n "$file" '*/Diffusion/data.nii.gz'
-            unzip -n "$file" '*/Diffusion/nodif_brain_mask.nii.gz'
-            unzip -n "$file" '*/Diffusion/bvals'
-            unzip -n "$file" '*/Diffusion/bvecs'
+            unzip -n "$file" '*/T1w/ribbon.nii.gz'
+            unzip -n "$file" '*/T1w/Diffusion/data.nii.gz'
+            unzip -n "$file" '*/T1w/Diffusion/nodif_brain_mask.nii.gz'
+            unzip -n "$file" '*/T1w/Diffusion/bvals'
+            unzip -n "$file" '*/T1w/Diffusion/bvecs'
         fi
     done
 fi

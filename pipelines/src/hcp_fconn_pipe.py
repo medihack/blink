@@ -17,9 +17,9 @@ from blink_interface import FunctionalConnectivity, AtlasMerger
 # options
 ###
 options = dict(
-    workflow_plugin="Linear",
+    workflow_plugin="MultiProc",
     sub_args="-q long.q -l h_vmem=15G,virtual_free=10G",
-    number_of_processors=2,
+    number_of_processors=10,
     save_graph=False
 )
 
@@ -125,46 +125,7 @@ sampleatlas.inputs.interp = "nearestneighbour"
 
 conn = Node(FunctionalConnectivity(), name="conn")
 
-def rewrite_matrix_tojson(in_matrix):
-    from nipype.utils.filemanip import split_filename
-    import os
-    import json
-
-    out_matrix = list()
-    with open(in_matrix) as f:
-        for row in f:
-            row = row.strip()
-            if row:
-                row = row.split(' ')
-                out_matrix.append(row)
-
-    fname = split_filename(in_matrix)[1] + ".json"
-    fname = os.path.join(os.getcwd(), fname)
-    with open(fname, "w") as f:
-        json.dump(out_matrix, f)
-
-    return fname
-
-def rewrite_regions_tojson(in_regions):
-    from nipype.utils.filemanip import split_filename
-    import os
-    import json
-
-    out_regions = list()
-    with open(in_regions) as f:
-        for row in f:
-            row = row.strip()
-            if row:
-                row = row.split("\t")
-                out_regions.append(row)
-
-    fname = split_filename(in_regions)[1] + ".json"
-    fname = os.path.join(os.getcwd(), fname)
-    with open(fname, "w") as f:
-        json.dump(out_regions, f)
-
-    return fname
-
+# Create BLINK network properties for HCP data
 def create_network_properties(subject_id, subjects_data):
     import os
     import json
@@ -213,17 +174,6 @@ datasink.inputs.substitutions = [
     ("normalized_matrix", "matrix"),
 ]
 
-# debug node that is normally not used
-def debug(input):
-    print type(input)
-    print input
-    return None
-
-debug = Node(Function(input_names=["input"],
-                      output_names=[],
-                      function=debug),
-             name="debug")
-
 workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # regress out csf and wm
@@ -268,8 +218,8 @@ workflow.connect([(infosource, datasource, [("subject_id", "subject_id")]),
 
                   # save results
                   (infosource, datasink, [("subject_id", "container")]),
-                  (conn, datasink, [(("normalized_matrix", rewrite_matrix_tojson), "rfMRI_Rest1_LR.@m")]),
-                  (conn, datasink, [(("mapped_regions", rewrite_regions_tojson), "rfMRI_Rest1_LR.@r")]),
+                  (conn, datasink, [(("normalized_matrix", utils.rewrite_matrix_tojson), "rfMRI_Rest1_LR.@m")]),
+                  (conn, datasink, [(("mapped_regions", utils.rewrite_regions_tojson), "rfMRI_Rest1_LR.@r")]),
                   (networkprops, datasink, [("network_properties", "rfMRI_Rest1_LR.@p")]),
                   ])
 
