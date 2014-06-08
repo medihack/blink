@@ -37,6 +37,6 @@ if __name__ == '__main__':
 
     # create request object and upload network to BLINK server
     token = "2a367de02f52b927935cfa192422a2305eb3a087"
-    request = client.Request(token, dev=True)
+    request = client.Request(token)
     result = request.create(network)
     print "Created example network with ID: " + str(result)

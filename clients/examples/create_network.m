@@ -16,6 +16,6 @@ end
 
 % create request object and upload to BLINK server
 token = '2a367de02f52b927935cfa192422a2305eb3a087';
-req = Request(token, true, true);
+req = Request(token);
 networkId = req.create(network);
 disp(networkId);
