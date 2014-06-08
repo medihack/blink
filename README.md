@@ -1,7 +1,7 @@
 About this repository
 =====================
 
-The BLINK GitHub repository contains the BLINK client (client folter) to
+The BLINK GitHub repository contains the BLINK client (clients folter) to
 communicate with the [BLINK website](http://neuromia.org/blink/) in
 programmatic way using the REST API of the server.
 Additionally the repository contains the pipeline we used to analyze one
